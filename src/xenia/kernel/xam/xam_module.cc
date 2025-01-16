@@ -37,7 +37,13 @@ XamModule::XamModule(Emulator* emulator, KernelState* kernel_state)
 std::vector<xe::cpu::Export*> xam_exports(4096);
 
 xe::cpu::Export* RegisterExport_xam(xe::cpu::Export* export_entry) {
-  assert_true(export_entry->ordinal < xam_exports.size());
+  //FIXME(RodoMa92): I have no clue why, but with Clang asking for a size
+  //will NOT allocate it by default (fe: size will still be 0). Resizing will
+  //force it to comply though.
+  if (xam_exports.size() < export_entry->ordinal) {
+    xam_exports.resize(4096);
+    assert_true(export_entry->ordinal < xam_exports.size());
+  }
   xam_exports[export_entry->ordinal] = export_entry;
   return export_entry;
 }
