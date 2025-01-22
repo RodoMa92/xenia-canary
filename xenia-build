@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import stat
+import shutil
 
 __author__ = 'ben.vanik@gmail.com (Ben Vanik)'
 
@@ -849,6 +850,41 @@ class BaseBuildCommand(Command):
                 args['config']
             ] + scheme_args + pass_args, shell=False, env=dict(os.environ))
         else:
+            shutil.rmtree('./lib', ignore_errors=True)
+            os.makedirs('./lib/dxvk', exist_ok=True)
+            # Build dxvk and vkd3d first
+            print('Building vkd3d-proton...')
+            os.chdir('./third_party/vkd3d-proton/')
+            result = subprocess.call([
+                './package-release.sh',
+                'master',
+                'build',
+                '--no-package',
+                '--native'
+            ], shell=False, env=dict(os.environ))
+            print('')
+            if result != 0:
+                print('ERROR: vkd3d-proton failed with one or more errors.')
+                return result
+            os.rename('./build/vkd3d-proton-master', '../../lib/vkd3d-proton')
+            print('Building dxvk...')
+            os.chdir('./../dxvk/')
+            result = subprocess.call([
+                './package-native.sh',
+                'master', 
+                'build', 
+                '--no-package', 
+                '--64-only'
+            ], shell=False, env=dict(os.environ))
+            os.rename('./build/dxvk-native-master/usr/include/dxvk', '../../lib/dxvk/include')
+            os.rename('./build/dxvk-native-master/usr/lib', '../../lib/dxvk/x64/')
+            shutil.rmtree('./build/')
+            print('')
+            if result != 0:
+                print('ERROR: dxvk failed with one or more errors.')
+                return result
+            os.chdir('./../../')
+            print('Generating ninja build script...')
             result = subprocess.call([
                 'cmake',
                 '-S build/',
@@ -862,6 +898,7 @@ class BaseBuildCommand(Command):
             if result != 0:
                 print('ERROR: cmake failed with one or more errors.')
                 return result
+            print('Compiling xenia-canary...')
             result = subprocess.call([
                     'ninja',
                     '-C./build/build_%s' % (args['config']),
