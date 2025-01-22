@@ -105,7 +105,7 @@
 	url = https://github.com/zeux/pugixml.git
 [submodule "third_party/vkd3d-proton"]
 	path = third_party/vkd3d-proton
-	url = git@github.com:HansKristian-Work/vkd3d-proton.git
+	url = https://github.com/HansKristian-Work/vkd3d-proton.git
 [submodule "third_party/dxvk"]
 	path = third_party/dxvk
-	url = git@github.com:doitsujin/dxvk.git
+	url = https://github.com/doitsujin/dxvk.git
