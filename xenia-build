@@ -421,10 +421,11 @@ def git_submodule_update():
     shell_call([
         'git',
         '-c',
-        'fetch.recurseSubmodules=on-demand',
+#        'fetch.recurseSubmodules=on-demand',
         'submodule',
         'update',
         '--init',
+        '--recursive'
         '-j', str(os.cpu_count()),
         #'--depth 1', # This doesn't work for some reason
         ])
