@@ -12,13 +12,22 @@
 
 #include <memory>
 
+//Helpers to make d3d12 Windoisms compile under Linux
+#ifndef XE_PLATFORM_WIN32
+#include "xenia/gpu/d3d12/d3d12_linux_util.h"
+#endif
 #include "xenia/ui/d3d12/d3d12_api.h"
 #include "xenia/ui/graphics_provider.h"
 // chrispy: this is here to prevent clang format from moving d3d12_nvapi above
 // the headers it depends on
 #define HEADERFENCE
 #undef HEADERFENCE
+//TODO(RodoMa92): Implement this under linux using dxvk-nvapi-native
+// Ref: https://github.com/jp7677/dxvk-nvapi. I'm not that interested in this
+// since I do not have a nVidia GPU on my system.
+#ifdef XE_PLATFORM_WIN32
 #include "xenia/gpu/d3d12/d3d12_nvapi.hpp"
+#endif
 #define XE_UI_D3D12_FINE_GRAINED_DRAW_SCOPES 1
 
 namespace xe {
@@ -31,7 +40,7 @@ enum {
 };
 class D3D12Provider : public GraphicsProvider {
  public:
-  ~D3D12Provider();
+  ~D3D12Provider() override;
 
   static bool IsD3D12APIAvailable();
 
@@ -50,9 +59,17 @@ class D3D12Provider : public GraphicsProvider {
 
   IDXGIFactory2* GetDXGIFactory() const { return dxgi_factory_; }
   // nullptr if PIX not attached.
+  // TODO(RodoMa92): IDX is not present on other platforms except Windows
+#ifdef XE_PLATFORM_LINUX
+
+  IDXGraphicsAnalysis* GetGraphicsAnalysis() const {
+    return nullptr;
+  }
+#else
   IDXGraphicsAnalysis* GetGraphicsAnalysis() const {
     return graphics_analysis_;
   }
+#endif
   ID3D12Device* GetDevice() const { return device_; }
   ID3D12CommandQueue* GetDirectQueue() const { return direct_queue_; }
 
@@ -144,6 +161,8 @@ class D3D12Provider : public GraphicsProvider {
     return pfn_d3d_disassemble_(src_data, src_data_size, flags, comments,
                                 disassembly_out);
   }
+//FixMe(RodoMa92): CLSID on POSIX
+#ifdef XE_PLATFORM_WIN32
   HRESULT DxbcConverterCreateInstance(const CLSID& rclsid, const IID& riid,
                                       void** ppv) const {
     if (!pfn_dxilconv_dxc_create_instance_) {
@@ -158,6 +177,7 @@ class D3D12Provider : public GraphicsProvider {
     }
     return pfn_dxcompiler_dxc_create_instance_(rclsid, riid, ppv);
   }
+#endif
 
  private:
   D3D12Provider() = default;
@@ -192,7 +212,9 @@ class D3D12Provider : public GraphicsProvider {
   IDXGIFactory2* dxgi_factory_ = nullptr;
   ID3D12Device* device_ = nullptr;
   ID3D12CommandQueue* direct_queue_ = nullptr;
+#ifdef XE_PLATFORM_WIN32
   IDXGraphicsAnalysis* graphics_analysis_ = nullptr;
+#endif
 
   uint32_t descriptor_sizes_[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
@@ -207,6 +229,8 @@ class D3D12Provider : public GraphicsProvider {
   bool rasterizer_ordered_views_supported_;
   bool unaligned_block_textures_supported_;
 
+  //TODO(RodoMa92): See row 21 of this file
+#ifdef XE_PLATFORM_WIN32
   lightweight_nvapi::nvapi_state_t* nvapi_;
   lightweight_nvapi::cb_NvAPI_D3D12_CreateCommittedResource
       nvapi_createcommittedresource_ = nullptr;
@@ -214,6 +238,7 @@ class D3D12Provider : public GraphicsProvider {
       nvapi_usedriverheappriorities_ = nullptr;
   lightweight_nvapi::cb_NvAPI_D3D12_QueryCpuVisibleVidmem
       nvapi_querycpuvisiblevidmem_ = nullptr;
+#endif
 };
 
 }  // namespace d3d12

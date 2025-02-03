@@ -10,6 +10,8 @@
 #ifndef XENIA_UI_D3D12_D3D12_SUBMISSION_TRACKER_H_
 #define XENIA_UI_D3D12_D3D12_SUBMISSION_TRACKER_H_
 
+#include <memory>
+
 #include "xenia/ui/d3d12/d3d12_api.h"
 
 namespace xe {
@@ -45,7 +47,7 @@ class D3D12SubmissionTracker {
 
   // Will perform an ownership transfer if the queue is different than the
   // current one, and take a reference to the queue.
-  void SetQueue(ID3D12CommandQueue* new_queue);
+  void SetQueue(std::shared_ptr<ID3D12CommandQueue> new_queue);
 
   UINT64 GetCurrentSubmission() const { return submission_current_; }
   // May be lower than a value awaited by AwaitSubmissionCompletion if it
@@ -82,8 +84,8 @@ class D3D12SubmissionTracker {
   UINT64 submission_current_ = 1;
   UINT64 submission_signal_queued_ = 0;
   HANDLE fence_completion_event_ = nullptr;
-  Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
-  Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue_;
+  std::shared_ptr<ID3D12Fence> fence_;
+  std::shared_ptr<ID3D12CommandQueue> queue_;
 };
 
 }  // namespace d3d12

@@ -49,7 +49,7 @@ D3D12ImmediateDrawer::D3D12ImmediateTexture::~D3D12ImmediateTexture() {
 void D3D12ImmediateDrawer::D3D12ImmediateTexture::OnImmediateDrawerDestroyed() {
   immediate_drawer_ = nullptr;
   // Lifetime is not managed anymore, so don't keep the resource either.
-  resource_.Reset();
+  resource_.reset();
 }
 
 D3D12ImmediateDrawer::~D3D12ImmediateDrawer() {
@@ -127,7 +127,7 @@ bool D3D12ImmediateDrawer::Initialize() {
 
   // Create the pipelines.
   D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_desc = {};
-  pipeline_desc.pRootSignature = root_signature_.Get();
+  pipeline_desc.pRootSignature = root_signature_.get();
   pipeline_desc.VS.pShaderBytecode = shaders::immediate_vs;
   pipeline_desc.VS.BytecodeLength = sizeof(shaders::immediate_vs);
   pipeline_desc.PS.pShaderBytecode = shaders::immediate_ps;
@@ -251,7 +251,7 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
   resource_desc.SampleDesc.Quality = 0;
   resource_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
   resource_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-  Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+  std::shared_ptr<ID3D12Resource> resource;
   if (SUCCEEDED(device->CreateCommittedResource(
           &util::kHeapPropertiesDefault, heap_flag_create_not_zeroed,
           &resource_desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
@@ -264,7 +264,7 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
     D3D12_RESOURCE_DESC upload_buffer_desc;
     util::FillBufferResourceDesc(upload_buffer_desc, upload_size,
                                  D3D12_RESOURCE_FLAG_NONE);
-    Microsoft::WRL::ComPtr<ID3D12Resource> upload_buffer;
+    std::shared_ptr<ID3D12Resource> upload_buffer;
     if (SUCCEEDED(device->CreateCommittedResource(
             &util::kHeapPropertiesUpload, heap_flag_create_not_zeroed,
             &upload_buffer_desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
@@ -295,22 +295,22 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
         // resource because its lifetime is not tied to that of the
         // ImmediateTexture (and thus to context's submissions) now.
         PendingTextureUpload& pending_upload =
-            texture_uploads_pending_.emplace_back(resource.Get(),
-                                                  upload_buffer.Get());
+            texture_uploads_pending_.emplace_back(resource.get(),
+                                                  upload_buffer.get());
       } else {
         XELOGE(
             "D3D12ImmediateDrawer: Failed to map an upload buffer for a {}x{} "
             "texture",
             width, height);
-        upload_buffer.Reset();
-        resource.Reset();
+        upload_buffer.reset();
+        resource.reset();
       }
     } else {
       XELOGE(
           "D3D12ImmediateDrawer: Failed to create an upload buffer for a {}x{} "
           "texture",
           width, height);
-      resource.Reset();
+      resource.reset();
     }
   } else {
     XELOGE("D3D12ImmediateDrawer: Failed to create a {}x{} texture", width,
@@ -329,7 +329,7 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
   // Manage by this immediate drawer if successfully created a resource.
   std::unique_ptr<D3D12ImmediateTexture> texture =
       std::make_unique<D3D12ImmediateTexture>(
-          width, height, resource.Get(), sampler_index,
+          width, height, resource.get(), sampler_index,
           resource ? this : nullptr, textures_.size());
   if (resource) {
     textures_.push_back(texture.get());
@@ -402,7 +402,7 @@ void D3D12ImmediateDrawer::Begin(UIDrawContext& ui_draw_context,
   viewport.MaxDepth = 1.0f;
   command_list->RSSetViewports(1, &viewport);
 
-  command_list->SetGraphicsRootSignature(root_signature_.Get());
+  command_list->SetGraphicsRootSignature(root_signature_.get());
   float coordinate_space_size_inv[2];
   coordinate_space_size_inv[0] = 1.0f / coordinate_space_width;
   coordinate_space_size_inv[1] = 1.0f / coordinate_space_height;
@@ -526,7 +526,7 @@ void D3D12ImmediateDrawer::Draw(const ImmediateDraw& draw) {
     current_texture_descriptor_heap_index_ = texture_heap_index;
     bind_texture = true;
     ID3D12DescriptorHeap* descriptor_heaps[] = {
-        texture_descriptor_pool_->GetLastRequestHeap(), sampler_heap_.Get()};
+        texture_descriptor_pool_->GetLastRequestHeap(), sampler_heap_.get()};
     command_list->SetDescriptorHeaps(2, descriptor_heaps);
   }
 
@@ -581,11 +581,11 @@ void D3D12ImmediateDrawer::Draw(const ImmediateDraw& draw) {
   switch (draw.primitive_type) {
     case ImmediatePrimitiveType::kLines:
       primitive_topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-      pipeline = pipeline_line_.Get();
+      pipeline = pipeline_line_.get();
       break;
     case ImmediatePrimitiveType::kTriangles:
       primitive_topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-      pipeline = pipeline_triangle_.Get();
+      pipeline = pipeline_triangle_.get();
       break;
     default:
       assert_unhandled_case(draw.primitive_type);
@@ -671,11 +671,11 @@ void D3D12ImmediateDrawer::UploadTextures() {
   std::vector<D3D12_RESOURCE_BARRIER> barriers;
   barriers.reserve(texture_uploads_pending_.size());
   for (const PendingTextureUpload& pending_upload : texture_uploads_pending_) {
-    ID3D12Resource* texture = pending_upload.texture.Get();
+    ID3D12Resource* texture = pending_upload.texture.get();
 
     D3D12_RESOURCE_DESC texture_desc = texture->GetDesc();
     D3D12_TEXTURE_COPY_LOCATION location_source, location_dest;
-    location_source.pResource = pending_upload.buffer.Get();
+    location_source.pResource = pending_upload.buffer.get();
     location_source.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     device->GetCopyableFootprints(&texture_desc, 0, 1, 0,
                                   &location_source.PlacedFootprint, nullptr,
@@ -695,7 +695,7 @@ void D3D12ImmediateDrawer::UploadTextures() {
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
     texture_uploads_submitted_.emplace_back(
-        texture, pending_upload.buffer.Get(), last_paint_submission_index_);
+        texture, pending_upload.buffer.get(), last_paint_submission_index_);
   }
   texture_uploads_pending_.clear();
   assert_false(barriers.empty());

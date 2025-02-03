@@ -35,19 +35,26 @@ DEFINE_int32(
     "system responsibility)",
     "D3D12");
 
-DEFINE_bool(d3d12_nvapi_use_driver_heap_priorities, false, "nvidia stuff",
-            "D3D12");
+DEFINE_bool(
+  d3d12_nvapi_use_driver_heap_priorities, false,
+  "nvidia stuff. "
+  "Windows exclusive for now.",
+  "D3D12");
 namespace xe {
 namespace ui {
 namespace d3d12 {
 
 bool D3D12Provider::IsD3D12APIAvailable() {
+#ifndef XE_PLATFORM_WIN32
+  return true;
+#else
   HMODULE library_d3d12 = LoadLibraryW(L"D3D12.dll");
   if (!library_d3d12) {
     return false;
   }
   FreeLibrary(library_d3d12);
   return true;
+#endif
 }
 
 std::unique_ptr<D3D12Provider> D3D12Provider::Create() {
@@ -82,13 +89,13 @@ D3D12Provider::~D3D12Provider() {
   }
 
   if (cvars::d3d12_debug && pfn_dxgi_get_debug_interface1_) {
-    Microsoft::WRL::ComPtr<IDXGIDebug> dxgi_debug;
+    std::shared_ptr<IDXGIDebug> dxgi_debug;
     if (SUCCEEDED(
             pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&dxgi_debug)))) {
       dxgi_debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
     }
   }
-
+#ifdef XE_PLATFORM_WIN32
   if (library_dxcompiler_ != nullptr) {
     FreeLibrary(library_dxcompiler_);
   }
@@ -104,9 +111,14 @@ D3D12Provider::~D3D12Provider() {
   if (library_dxgi_ != nullptr) {
     FreeLibrary(library_dxgi_);
   }
+#endif
 }
 
 bool D3D12Provider::EnableIncreaseBasePriorityPrivilege() {
+#ifndef XE_PLATFORM_WIN32
+  //RodoMa92: Just return success on non win32 platforms.
+  return 0;
+#else
   TOKEN_PRIVILEGES privileges;
   privileges.PrivilegeCount = 1;
   privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
@@ -123,6 +135,7 @@ bool D3D12Provider::EnableIncreaseBasePriorityPrivilege() {
                  GetLastError() != ERROR_NOT_ALL_ASSIGNED;
   CloseHandle(token);
   return enabled;
+#endif
 }
 
 bool D3D12Provider::Initialize() {
@@ -479,7 +492,9 @@ bool D3D12Provider::Initialize() {
   // Get the graphics analysis interface, will silently fail if PIX is not
   // attached.
   pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&graphics_analysis_));
-  if (GetAdapterVendorID() == ui::GraphicsProvider::GpuVendorID::kNvidia) {
+  //TODO(RodoMa92): NVApi stuff is not implemented on other platforms besides Win
+#ifdef XE_PLATFORM_WIN32
+  if (GetAdapterVendorID() == GpuVendorID::kNvidia) {
     nvapi_ = new lightweight_nvapi::nvapi_state_t();
     if (!nvapi_->is_available()) {
       delete nvapi_;
@@ -506,6 +521,7 @@ bool D3D12Provider::Initialize() {
       }
     }
   }
+#endif
   return true;
 }
 uint32_t D3D12Provider::CreateUploadResource(

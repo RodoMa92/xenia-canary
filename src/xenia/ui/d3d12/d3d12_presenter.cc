@@ -65,7 +65,7 @@ Surface::TypeFlags D3D12Presenter::GetSupportedSurfaceTypes() const {
 }
 
 bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
-  Microsoft::WRL::ComPtr<ID3D12Resource> guest_output_resource;
+  std::shared_ptr<ID3D12Resource> guest_output_resource;
   {
     uint32_t guest_output_mailbox_index;
     std::unique_lock<std::mutex> guest_output_consumer_lock(
@@ -93,7 +93,7 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
   D3D12_RESOURCE_DESC buffer_desc;
   util::FillBufferResourceDesc(buffer_desc, copy_dest_size,
                                D3D12_RESOURCE_FLAG_NONE);
-  Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+  std::shared_ptr<ID3D12Resource> buffer;
   // Create zeroed not to leak data in the row padding.
   if (FAILED(device->CreateCommittedResource(
           &util::kHeapPropertiesReadback, D3D12_HEAP_FLAG_NONE, &buffer_desc,
@@ -103,7 +103,7 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
   }
 
   {
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> command_allocator;
+    std::shared_ptr<ID3D12CommandAllocator> command_allocator;
     if (FAILED(
             device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
                                            IID_PPV_ARGS(&command_allocator)))) {
@@ -112,9 +112,9 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
           "allocator");
       return false;
     }
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
+    std::shared_ptr<ID3D12GraphicsCommandList> command_list;
     if (FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                         command_allocator.Get(), nullptr,
+                                         command_allocator.get(), nullptr,
                                          IID_PPV_ARGS(&command_list)))) {
       XELOGE(
           "D3D12Presenter: Failed to create the guest output capturing command "
@@ -125,7 +125,7 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
     D3D12_RESOURCE_BARRIER barrier;
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = guest_output_resource.Get();
+    barrier.Transition.pResource = guest_output_resource.get();
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     barrier.Transition.StateBefore = kGuestOutputInternalState;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
@@ -133,10 +133,10 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
                   D3D12_RESOURCE_STATE_COPY_SOURCE) {
       command_list->ResourceBarrier(1, &barrier);
     }
-    copy_dest.pResource = buffer.Get();
+    copy_dest.pResource = buffer.get();
     copy_dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     D3D12_TEXTURE_COPY_LOCATION copy_source;
-    copy_source.pResource = guest_output_resource.Get();
+    copy_source.pResource = guest_output_resource.get();
     copy_source.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     copy_source.SubresourceIndex = 0;
     command_list->CopyTextureRegion(&copy_dest, 0, 0, 0, &copy_source, nullptr);
@@ -230,9 +230,9 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
     // Using the current swap_chain_allows_tearing_ value that's consistent with
     // the creation of the swap chain because ResizeBuffers can't toggle the
     // tearing flag.
-    for (Microsoft::WRL::ComPtr<ID3D12Resource>& swap_chain_buffer_ref :
+    for (std::shared_ptr<ID3D12Resource>& swap_chain_buffer_ref :
          paint_context_.swap_chain_buffers) {
-      swap_chain_buffer_ref.Reset();
+      swap_chain_buffer_ref.reset();
     }
     bool swap_chain_resized =
         SUCCEEDED(paint_context_.swap_chain->ResizeBuffers(
@@ -293,7 +293,7 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
     }
     IDXGIFactory2* dxgi_factory = provider_.GetDXGIFactory();
     ID3D12CommandQueue* direct_queue = provider_.GetDirectQueue();
-    Microsoft::WRL::ComPtr<IDXGISwapChain1> swap_chain_1;
+    std::shared_ptr<IDXGISwapChain1> swap_chain_1;
     switch (surface_type) {
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_GAMES)
       case Surface::kTypeIndex_Win32Hwnd: {
@@ -356,7 +356,7 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
   rtv_desc.Texture2D.PlaneSlice = 0;
   for (uint32_t i = 0; i < PaintContext::kSwapChainBufferCount; ++i) {
     ID3D12Resource* swap_chain_buffer =
-        paint_context_.swap_chain_buffers[i].Get();
+        paint_context_.swap_chain_buffers[i].get();
     rtv_desc.Format = kSwapChainFormat;
     device->CreateRenderTargetView(
         swap_chain_buffer, &rtv_desc,
@@ -379,7 +379,7 @@ bool D3D12Presenter::RefreshGuestOutputImpl(
     bool& is_8bpc_out_ref) {
   assert_not_zero(frontbuffer_width);
   assert_not_zero(frontbuffer_height);
-  std::pair<UINT64, Microsoft::WRL::ComPtr<ID3D12Resource>>&
+  std::pair<UINT64, std::shared_ptr<ID3D12Resource>>&
       guest_output_resource_ref = guest_output_resources_[mailbox_index];
   if (guest_output_resource_ref.second) {
     D3D12_RESOURCE_DESC guest_output_resource_current_desc =
@@ -390,7 +390,7 @@ bool D3D12Presenter::RefreshGuestOutputImpl(
       // in its own submission tracker timeline, safe to release here.
       guest_output_resource_refresher_submission_tracker_
           .AwaitSubmissionCompletion(guest_output_resource_ref.first);
-      guest_output_resource_ref.second.Reset();
+      guest_output_resource_ref.second.reset();
     }
   }
   if (!guest_output_resource_ref.second) {
@@ -420,7 +420,7 @@ bool D3D12Presenter::RefreshGuestOutputImpl(
     }
   }
   D3D12GuestOutputRefreshContext context(
-      is_8bpc_out_ref, guest_output_resource_ref.second.Get());
+      is_8bpc_out_ref, guest_output_resource_ref.second.get());
   bool refresher_succeeded = refresher(context);
   // Even if the refresher has returned false, it still might have submitted
   // some commands referencing the resource. It's better to put an excessive
@@ -438,11 +438,11 @@ void D3D12Presenter::PaintContext::DestroySwapChain() {
     return;
   }
   AwaitSwapChainUsageCompletion();
-  for (Microsoft::WRL::ComPtr<ID3D12Resource>& swap_chain_buffer_ref :
+  for (std::shared_ptr<ID3D12Resource>& swap_chain_buffer_ref :
        swap_chain_buffers) {
-    swap_chain_buffer_ref.Reset();
+    swap_chain_buffer_ref.reset();
   }
-  swap_chain.Reset();
+  swap_chain.reset();
   swap_chain_allows_tearing = false;
   swap_chain_height = 0;
   swap_chain_width = 0;
@@ -464,9 +464,9 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
       paint_context_
           .command_allocators[current_paint_submission %
                               command_allocator_count]
-          .Get();
+          .get();
   command_allocator->Reset();
-  ID3D12GraphicsCommandList* command_list = paint_context_.command_list.Get();
+  ID3D12GraphicsCommandList* command_list = paint_context_.command_list.get();
   command_list->Reset(command_allocator, nullptr);
 
   ID3D12Device* device = provider_.GetDevice();
@@ -480,7 +480,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
       rtv_heap_start,
       PaintContext::kRTVIndexSwapChainBuffer0 + back_buffer_index);
   ID3D12Resource* back_buffer =
-      paint_context_.swap_chain_buffers[back_buffer_index].Get();
+      paint_context_.swap_chain_buffers[back_buffer_index].get();
   bool back_buffer_acquired = false;
   bool back_buffer_bound = false;
   bool back_buffer_clear_needed = true;
@@ -490,7 +490,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
 
   GuestOutputProperties guest_output_properties;
   GuestOutputPaintConfig guest_output_paint_config;
-  Microsoft::WRL::ComPtr<ID3D12Resource> guest_output_resource;
+  std::shared_ptr<ID3D12Resource> guest_output_resource;
   {
     uint32_t guest_output_mailbox_index;
     std::unique_lock<std::mutex> guest_output_consumer_lock(
@@ -529,7 +529,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
     }
 
     if (guest_output_flow.effect_count) {
-      ID3D12DescriptorHeap* view_heap = paint_context_.view_heap.Get();
+      ID3D12DescriptorHeap* view_heap = paint_context_.view_heap.get();
       D3D12_CPU_DESCRIPTOR_HANDLE view_heap_cpu_start =
           view_heap->GetCPUDescriptorHandleForHeapStart();
 
@@ -542,7 +542,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
       // released (or a taken, but never actually used) slot.
       for (size_t i = 0;
            i < paint_context_.guest_output_resource_paint_refs.size(); ++i) {
-        const std::pair<UINT64, Microsoft::WRL::ComPtr<ID3D12Resource>>&
+        const std::pair<UINT64, std::shared_ptr<ID3D12Resource>>&
             guest_output_resource_paint_ref =
                 paint_context_.guest_output_resource_paint_refs[i];
         if (guest_output_resource_paint_ref.second == guest_output_resource) {
@@ -598,7 +598,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
         guest_output_resource_srv_desc.Texture2D.PlaneSlice = 0;
         guest_output_resource_srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
         device->CreateShaderResourceView(
-            guest_output_resource.Get(), &guest_output_resource_srv_desc,
+            guest_output_resource.get(), &guest_output_resource_srv_desc,
             provider_.OffsetViewDescriptor(
                 view_heap_cpu_start,
                 PaintContext::kViewIndexGuestOutput0Srv +
@@ -612,7 +612,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
         if (i + 1 < guest_output_flow.effect_count) {
           intermediate_needed_size = guest_output_flow.effect_output_sizes[i];
         }
-        Microsoft::WRL::ComPtr<ID3D12Resource>& intermediate_texture_ptr_ref =
+        std::shared_ptr<ID3D12Resource>& intermediate_texture_ptr_ref =
             paint_context_.guest_output_intermediate_textures[i];
         std::pair<uint32_t, uint32_t> intermediate_current_size(0, 0);
         if (intermediate_texture_ptr_ref) {
@@ -630,7 +630,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
             if (intermediate_texture_ptr_ref) {
               paint_context_.paint_submission_tracker.AwaitSubmissionCompletion(
                   paint_context_.guest_output_intermediate_texture_last_usage);
-              intermediate_texture_ptr_ref.Reset();
+              intermediate_texture_ptr_ref.reset();
             }
             // Resource.
             D3D12_RESOURCE_DESC intermediate_desc;
@@ -659,7 +659,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
               continue;
             }
             ID3D12Resource* intermediate_texture =
-                intermediate_texture_ptr_ref.Get();
+                intermediate_texture_ptr_ref.get();
             // SRV.
             D3D12_SHADER_RESOURCE_VIEW_DESC intermediate_srv_desc;
             intermediate_srv_desc.Format = kGuestOutputIntermediateFormat;
@@ -696,7 +696,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
                         .GetCompletedSubmission() >=
                     paint_context_
                         .guest_output_intermediate_texture_last_usage) {
-              intermediate_texture_ptr_ref.Reset();
+              intermediate_texture_ptr_ref.reset();
             }
           }
         }
@@ -747,7 +747,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
           effect_rect_y = guest_output_flow.output_y;
         } else {
           effect_dest_resource =
-              paint_context_.guest_output_intermediate_textures[i].Get();
+              paint_context_.guest_output_intermediate_textures[i].get();
           if (!i) {
             // If this is not the first effect, the transition has been done at
             // the end of the previous effect in a single command.
@@ -805,16 +805,16 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
 
         command_list->SetPipelineState(
             is_final_effect
-                ? guest_output_paint_final_pipelines_[size_t(effect)].Get()
+                ? guest_output_paint_final_pipelines_[size_t(effect)].get()
                 : guest_output_paint_intermediate_pipelines_[size_t(effect)]
-                      .Get());
+                      .get());
         GuestOutputPaintRootSignatureIndex
             guest_output_paint_root_signature_index =
                 GetGuestOutputPaintRootSignatureIndex(effect);
         command_list->SetGraphicsRootSignature(
             guest_output_paint_root_signatures_
                 [size_t(guest_output_paint_root_signature_index)]
-                    .Get());
+                    .get());
 
         UINT effect_src_view_index = UINT(
             i ? (PaintContext::kViewIndexGuestOutputIntermediate0Srv + (i - 1))
@@ -948,7 +948,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
             barrier_srv_to_rtv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier_srv_to_rtv.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier_srv_to_rtv.Transition.pResource =
-                paint_context_.guest_output_intermediate_textures[i + 1].Get();
+                paint_context_.guest_output_intermediate_textures[i + 1].get();
             barrier_srv_to_rtv.Transition.Subresource =
                 D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             barrier_srv_to_rtv.Transition.StateBefore =
@@ -989,7 +989,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
   // most actual).
   UINT64 completed_paint_submission =
       paint_context_.paint_submission_tracker.GetCompletedSubmission();
-  for (std::pair<UINT64, Microsoft::WRL::ComPtr<ID3D12Resource>>&
+  for (std::pair<UINT64, std::shared_ptr<ID3D12Resource>>&
            guest_output_resource_paint_ref :
        paint_context_.guest_output_resource_paint_refs) {
     if (!guest_output_resource_paint_ref.second ||
@@ -997,7 +997,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
       continue;
     }
     if (completed_paint_submission >= guest_output_resource_paint_ref.first) {
-      guest_output_resource_paint_ref.second.Reset();
+      guest_output_resource_paint_ref.second.reset();
     }
   }
 
@@ -1089,7 +1089,7 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
 bool D3D12Presenter::InitializeSurfaceIndependent() {
   // Check if DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING is supported.
   {
-    Microsoft::WRL::ComPtr<IDXGIFactory5> dxgi_factory_5;
+    std::shared_ptr<IDXGIFactory5> dxgi_factory_5;
     if (SUCCEEDED(provider_.GetDXGIFactory()->QueryInterface(
             IID_PPV_ARGS(&dxgi_factory_5)))) {
       BOOL tearing_feature_data;
@@ -1355,7 +1355,7 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
     guest_output_paint_pipeline_desc.pRootSignature =
         guest_output_paint_root_signatures_
             [GetGuestOutputPaintRootSignatureIndex(guest_output_paint_effect)]
-                .Get();
+                .get();
     if (CanGuestOutputPaintEffectBeIntermediate(guest_output_paint_effect)) {
       guest_output_paint_pipeline_desc.RTVFormats[0] =
           kGuestOutputIntermediateFormat;
@@ -1396,7 +1396,7 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   }
 
   // Paint command allocators and command list.
-  for (Microsoft::WRL::ComPtr<ID3D12CommandAllocator>&
+  for (std::shared_ptr<ID3D12CommandAllocator>&
            paint_command_allocator_ref : paint_context_.command_allocators) {
     if (FAILED(device->CreateCommandAllocator(
             D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -1409,7 +1409,7 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   }
   if (FAILED(device->CreateCommandList(
           0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-          paint_context_.command_allocators[0].Get(), nullptr,
+          paint_context_.command_allocators[0].get(), nullptr,
           IID_PPV_ARGS(&paint_context_.command_list)))) {
     XELOGE(
         "D3D12Presenter: Failed to create the command list for drawing to a "

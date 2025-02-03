@@ -249,7 +249,7 @@ class D3D12RenderTargetCache final : public RenderTargetCache {
           descriptor_srv_stencil_(std::move(descriptor_srv_stencil)),
           resource_state_(resource_state) {}
 
-    ID3D12Resource* resource() const { return resource_.Get(); }
+    ID3D12Resource* resource() const { return resource_.get(); }
     const ui::d3d12::D3D12CpuDescriptorPool::Descriptor& descriptor_draw()
         const {
       return descriptor_draw_;
@@ -295,7 +295,7 @@ class D3D12RenderTargetCache final : public RenderTargetCache {
     }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+    std::shared_ptr<ID3D12Resource> resource_;
     ui::d3d12::D3D12CpuDescriptorPool::Descriptor descriptor_draw_;
     ui::d3d12::D3D12CpuDescriptorPool::Descriptor descriptor_draw_srgb_;
     ui::d3d12::D3D12CpuDescriptorPool::Descriptor descriptor_load_separate_;

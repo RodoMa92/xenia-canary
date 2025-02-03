@@ -67,12 +67,12 @@ class D3D12PrimitiveProcessor final : public PrimitiveProcessor {
  private:
   D3D12CommandProcessor& command_processor_;
 
-  Microsoft::WRL::ComPtr<ID3D12Resource> builtin_index_buffer_;
+  std::shared_ptr<ID3D12Resource> builtin_index_buffer_;
   D3D12_GPU_VIRTUAL_ADDRESS builtin_index_buffer_gpu_address_ = 0;
   // Temporary buffer copied in the beginning of the first submission for
   // uploading to builtin_index_buffer_, destroyed when the submission when it
   // was uploaded is completed.
-  Microsoft::WRL::ComPtr<ID3D12Resource> builtin_index_buffer_upload_;
+  std::shared_ptr<ID3D12Resource> builtin_index_buffer_upload_;
   // UINT64_MAX means not uploaded yet and needs uploading in the first
   // submission (if the upload buffer exists at all).
   uint64_t builtin_index_buffer_upload_submission_ = UINT64_MAX;

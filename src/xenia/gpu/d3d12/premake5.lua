@@ -18,6 +18,15 @@ project("xenia-gpu-d3d12")
   files({
     "../shaders/bytecode/d3d12_5_1/*.h",
   })
+  filter({"platforms:Linux"})
+    includedirs({
+      project_root.."/lib/vkd3d-proton/include/vkd3d-proton",
+      project_root.."/lib/dxvk/include/",
+    })
+    files({
+      "./linux_helpers/*.h",
+    })
+  filter({})
 
 group("src")
 project("xenia-gpu-d3d12-trace-viewer")

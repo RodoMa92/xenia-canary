@@ -74,11 +74,14 @@ void D3D12CommandProcessor::InitializeShaderStorage(
 void D3D12CommandProcessor::RequestFrameTrace(
     const std::filesystem::path& root_path) {
   // Capture with PIX if attached.
+  // PIX not available on non Windows platforms
+#ifdef XE_PLATFORM_WIN32
   if (GetD3D12Provider().GetGraphicsAnalysis() != nullptr) {
     pix_capture_requested_.store(true, std::memory_order_relaxed);
     return;
   }
   CommandProcessor::RequestFrameTrace(root_path);
+#endif
 }
 
 void D3D12CommandProcessor::TracePlaybackWroteMemory(uint32_t base_ptr,

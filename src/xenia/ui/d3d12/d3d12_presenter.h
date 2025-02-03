@@ -37,7 +37,7 @@ class D3D12UIDrawContext final : public UIDrawContext {
         submission_index_completed_(submission_index_completed) {}
 
   ID3D12GraphicsCommandList* command_list() const {
-    return command_list_.Get();
+    return command_list_.get();
   }
   UINT64 submission_index_current() const { return submission_index_current_; }
   UINT64 submission_index_completed() const {
@@ -45,7 +45,7 @@ class D3D12UIDrawContext final : public UIDrawContext {
   }
 
  private:
-  Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list_;
+  std::shared_ptr<ID3D12GraphicsCommandList> command_list_;
   UINT64 submission_index_current_;
   UINT64 submission_index_completed_;
 };
@@ -74,10 +74,10 @@ class D3D12Presenter final : public Presenter {
     // kGuestOutputFormat, supports UAV. The initial state in the callback is
     // kGuestOutputInternalState, and the callback must also transition it back
     // to kGuestOutputInternalState before finishing.
-    ID3D12Resource* resource_uav_capable() const { return resource_.Get(); }
+    ID3D12Resource* resource_uav_capable() const { return resource_.get(); }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+    std::shared_ptr<ID3D12Resource> resource_;
   };
 
   static std::unique_ptr<D3D12Presenter> Create(
@@ -230,19 +230,19 @@ class D3D12Presenter final : public Presenter {
     // Signaled after presenting.
     D3D12SubmissionTracker present_submission_tracker;
 
-    std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>,
+    std::array<std::shared_ptr<ID3D12CommandAllocator>,
                kSwapChainBufferCount>
         command_allocators;
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
+    std::shared_ptr<ID3D12GraphicsCommandList> command_list;
 
     // Descriptor heaps for views of the current resources related to the guest
     // output and to painting, updated either during painting or during
     // connection lifetime management if outdated after awaiting usage
     // completion.
     // RTV heap.
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtv_heap;
+    std::shared_ptr<ID3D12DescriptorHeap> rtv_heap;
     // Shader-visible CBV/SRV/UAV heap.
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> view_heap;
+    std::shared_ptr<ID3D12DescriptorHeap> view_heap;
 
     // Refreshed and cleaned up during guest output painting. The first is the
     // paint submission index in which the guest output texture (and its
@@ -251,14 +251,14 @@ class D3D12Presenter final : public Presenter {
     // the reference is not in this array yet, the most outdated reference, if
     // needed, is replaced with the new one, awaiting the completion of the last
     // paint usage.
-    std::array<std::pair<UINT64, Microsoft::WRL::ComPtr<ID3D12Resource>>,
+    std::array<std::pair<UINT64, std::shared_ptr<ID3D12Resource>>,
                kGuestOutputMailboxSize>
         guest_output_resource_paint_refs;
 
     // Current intermediate textures for guest output painting, refreshed when
     // painting guest output. While not in use, they are in
     // D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE.
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>,
+    std::array<std::shared_ptr<ID3D12Resource>,
                kMaxGuestOutputPaintEffects - 1>
         guest_output_intermediate_textures;
     UINT64 guest_output_intermediate_texture_last_usage = 0;
@@ -268,8 +268,8 @@ class D3D12Presenter final : public Presenter {
     uint32_t swap_chain_width = 0;
     uint32_t swap_chain_height = 0;
     bool swap_chain_allows_tearing = false;
-    Microsoft::WRL::ComPtr<IDXGISwapChain3> swap_chain;
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kSwapChainBufferCount>
+    std::shared_ptr<IDXGISwapChain3> swap_chain;
+    std::array<std::shared_ptr<ID3D12Resource>, kSwapChainBufferCount>
         swap_chain_buffers;
   };
 
@@ -291,20 +291,20 @@ class D3D12Presenter final : public Presenter {
   // Static objects for guest output presentation, used only when painting the
   // main target (can be destroyed only after awaiting main target usage
   // completion).
-  std::array<Microsoft::WRL::ComPtr<ID3D12RootSignature>,
+  std::array<std::shared_ptr<ID3D12RootSignature>,
              kGuestOutputPaintRootSignatureCount>
       guest_output_paint_root_signatures_;
-  std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>,
+  std::array<std::shared_ptr<ID3D12PipelineState>,
              size_t(GuestOutputPaintEffect::kCount)>
       guest_output_paint_intermediate_pipelines_;
-  std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>,
+  std::array<std::shared_ptr<ID3D12PipelineState>,
              size_t(GuestOutputPaintEffect::kCount)>
       guest_output_paint_final_pipelines_;
 
   // The first is the refresher submission tracker fence value at which the
   // guest output texture was last refreshed, the second is the reference to the
   // texture, which may be null. The indices are the mailbox indices.
-  std::array<std::pair<UINT64, Microsoft::WRL::ComPtr<ID3D12Resource>>,
+  std::array<std::pair<UINT64, std::shared_ptr<ID3D12Resource>>,
              kGuestOutputMailboxSize>
       guest_output_resources_;
   // The guest output resources are protected by two submission trackers - the

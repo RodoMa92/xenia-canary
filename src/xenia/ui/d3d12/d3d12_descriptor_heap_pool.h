@@ -66,7 +66,7 @@ class D3D12DescriptorHeapPool {
   // after a successful request because before a request, the heap may not exist
   // yet.
   ID3D12DescriptorHeap* GetLastRequestHeap() const {
-    return writable_first_->heap.Get();
+    return writable_first_->heap.get();
   }
   D3D12_CPU_DESCRIPTOR_HANDLE GetLastRequestHeapCPUStart() const {
     return writable_first_->cpu_start;
@@ -81,7 +81,7 @@ class D3D12DescriptorHeapPool {
   uint32_t page_size_;
 
   struct Page {
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> heap;
+    std::shared_ptr<ID3D12DescriptorHeap> heap;
     D3D12_CPU_DESCRIPTOR_HANDLE cpu_start;
     D3D12_GPU_DESCRIPTOR_HANDLE gpu_start;
     uint64_t last_submission_index;

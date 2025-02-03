@@ -27,21 +27,25 @@ class D3D12TraceDump : public TraceDump {
   }
 
   void BeginHostCapture() override {
+#ifdef XE_PLATFORM_WIN32
     auto provider = static_cast<const ui::d3d12::D3D12Provider*>(
         graphics_system_->provider());
     IDXGraphicsAnalysis* graphics_analysis = provider->GetGraphicsAnalysis();
     if (graphics_analysis) {
       graphics_analysis->BeginCapture();
     }
+#endif
   }
 
   void EndHostCapture() override {
+#ifdef XE_PLATFORM_WIN32
     auto provider = static_cast<const ui::d3d12::D3D12Provider*>(
         graphics_system_->provider());
     IDXGraphicsAnalysis* graphics_analysis = provider->GetGraphicsAnalysis();
     if (graphics_analysis) {
       graphics_analysis->EndCapture();
     }
+#endif
   }
 };
 

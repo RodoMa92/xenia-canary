@@ -96,12 +96,13 @@ bool D3D12PrimitiveProcessor::InitializeBuiltinIndexBuffer(
   D3D12_RESOURCE_DESC resource_desc;
   ui::d3d12::util::FillBufferResourceDesc(resource_desc, UINT64(size_bytes),
                                           D3D12_RESOURCE_FLAG_NONE);
-  Microsoft::WRL::ComPtr<ID3D12Resource> draw_resource;
+  std::shared_ptr<ID3D12Resource> draw_resource;
+  ID3D12Resource * ptr = draw_resource.get();
   if (FAILED(device->CreateCommittedResource(
           &ui::d3d12::util::kHeapPropertiesDefault,
           provider.GetHeapFlagCreateNotZeroed(), &resource_desc,
           D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-          IID_PPV_ARGS(&draw_resource)))) {
+          IID_PPV_ARGS(&ptr)))) {
     XELOGE(
         "D3D12 primitive processor: Failed to create the built-in index "
         "buffer GPU resource with {} bytes",
@@ -109,10 +110,11 @@ bool D3D12PrimitiveProcessor::InitializeBuiltinIndexBuffer(
     return false;
   }
 
-  Microsoft::WRL::ComPtr<ID3D12Resource> upload_resource;
+  std::shared_ptr<ID3D12Resource> upload_resource;
+  ptr = upload_resource.get();
   if (!provider.CreateUploadResource(
           provider.GetHeapFlagCreateNotZeroed(), &resource_desc,
-          D3D12_RESOURCE_STATE_GENERIC_READ, IID_PPV_ARGS(&upload_resource))) {
+          D3D12_RESOURCE_STATE_GENERIC_READ, IID_PPV_ARGS(&ptr))) {
     XELOGE(
         "D3D12 primitive processor: Failed to create the built-in index "
         "buffer upload resource with {} bytes",

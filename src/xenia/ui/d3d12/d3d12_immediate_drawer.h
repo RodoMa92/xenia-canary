@@ -75,7 +75,7 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
                           size_t immediate_drawer_index);
     ~D3D12ImmediateTexture() override;
 
-    ID3D12Resource* resource() const { return resource_.Get(); }
+    ID3D12Resource* resource() const { return resource_.get(); }
     SamplerIndex sampler_index() const { return sampler_index_; }
 
     size_t immediate_drawer_index() const { return immediate_drawer_index_; }
@@ -92,7 +92,7 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
     }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+    std::shared_ptr<ID3D12Resource> resource_;
     SamplerIndex sampler_index_;
 
     D3D12ImmediateDrawer* immediate_drawer_;
@@ -110,7 +110,7 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
 
   const D3D12Provider& provider_;
 
-  Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature_;
+  std::shared_ptr<ID3D12RootSignature> root_signature_;
   enum class RootParameter {
     kTexture,
     kSampler,
@@ -119,10 +119,10 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
     kCount
   };
 
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline_triangle_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline_line_;
+  std::shared_ptr<ID3D12PipelineState> pipeline_triangle_;
+  std::shared_ptr<ID3D12PipelineState> pipeline_line_;
 
-  Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> sampler_heap_;
+  std::shared_ptr<ID3D12DescriptorHeap> sampler_heap_;
   D3D12_CPU_DESCRIPTOR_HANDLE sampler_heap_cpu_start_;
   D3D12_GPU_DESCRIPTOR_HANDLE sampler_heap_gpu_start_;
 
@@ -132,8 +132,8 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
   struct PendingTextureUpload {
     PendingTextureUpload(ID3D12Resource* texture, ID3D12Resource* buffer)
         : texture(texture), buffer(buffer) {}
-    Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-    Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+    std::shared_ptr<ID3D12Resource> texture;
+    std::shared_ptr<ID3D12Resource> buffer;
   };
   std::vector<PendingTextureUpload> texture_uploads_pending_;
 
@@ -143,13 +143,13 @@ class D3D12ImmediateDrawer final : public ImmediateDrawer {
         : texture(texture),
           buffer(buffer),
           submission_index(submission_index) {}
-    Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-    Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+    std::shared_ptr<ID3D12Resource> texture;
+    std::shared_ptr<ID3D12Resource> buffer;
     UINT64 submission_index;
   };
   std::deque<SubmittedTextureUpload> texture_uploads_submitted_;
 
-  std::deque<std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, UINT64>>
+  std::deque<std::pair<std::shared_ptr<ID3D12Resource>, UINT64>>
       textures_deleted_;
 
   std::unique_ptr<D3D12UploadBufferPool> vertex_buffer_pool_;

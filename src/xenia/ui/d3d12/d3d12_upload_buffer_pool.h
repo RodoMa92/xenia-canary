@@ -38,7 +38,7 @@ class D3D12UploadBufferPool : public GraphicsUploadBufferPool {
     // Creates a reference to the buffer. It must not be unmapped until this
     // D3D12Page is deleted.
     D3D12Page(ID3D12Resource* buffer, void* mapping);
-    Microsoft::WRL::ComPtr<ID3D12Resource> buffer_;
+    std::shared_ptr<ID3D12Resource> buffer_;
     void* mapping_;
     D3D12_GPU_VIRTUAL_ADDRESS gpu_address_;
   };

@@ -621,11 +621,11 @@ class D3D12CommandProcessor final : public CommandProcessor {
   // as R10G10B10X2 with swizzle).
   // Bytes 0x400...0x9FF - 128-entry PWL R16G16 gamma ramp (R - base, G - delta,
   // low 6 bits of each are zero, 3 elements per entry).
-  Microsoft::WRL::ComPtr<ID3D12Resource> gamma_ramp_buffer_;
+  std::shared_ptr<ID3D12Resource> gamma_ramp_buffer_;
   D3D12_RESOURCE_STATES gamma_ramp_buffer_state_;
   // Upload buffer for an image that is the same as gamma_ramp_, but with
   // kQueueFrames array layers.
-  Microsoft::WRL::ComPtr<ID3D12Resource> gamma_ramp_upload_buffer_;
+  std::shared_ptr<ID3D12Resource> gamma_ramp_upload_buffer_;
   uint8_t* gamma_ramp_upload_buffer_mapping_ = nullptr;
   bool gamma_ramp_256_entry_table_up_to_date_ = false;
   bool gamma_ramp_pwl_up_to_date_ = false;
@@ -641,12 +641,12 @@ class D3D12CommandProcessor final : public CommandProcessor {
 
     kCount,
   };
-  Microsoft::WRL::ComPtr<ID3D12RootSignature> apply_gamma_root_signature_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> apply_gamma_table_pipeline_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState>
+  std::shared_ptr<ID3D12RootSignature> apply_gamma_root_signature_;
+  std::shared_ptr<ID3D12PipelineState> apply_gamma_table_pipeline_;
+  std::shared_ptr<ID3D12PipelineState>
       apply_gamma_table_fxaa_luma_pipeline_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> apply_gamma_pwl_pipeline_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState>
+  std::shared_ptr<ID3D12PipelineState> apply_gamma_pwl_pipeline_;
+  std::shared_ptr<ID3D12PipelineState>
       apply_gamma_pwl_fxaa_luma_pipeline_;
 
   struct FxaaConstants {
@@ -660,9 +660,9 @@ class D3D12CommandProcessor final : public CommandProcessor {
 
     kCount,
   };
-  Microsoft::WRL::ComPtr<ID3D12RootSignature> fxaa_root_signature_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> fxaa_pipeline_;
-  Microsoft::WRL::ComPtr<ID3D12PipelineState> fxaa_extreme_pipeline_;
+  std::shared_ptr<ID3D12RootSignature> fxaa_root_signature_;
+  std::shared_ptr<ID3D12PipelineState> fxaa_pipeline_;
+  std::shared_ptr<ID3D12PipelineState> fxaa_extreme_pipeline_;
 
   // PWL gamma ramp can result in values with more precision than 10bpc. Though
   // those sub-10bpc bits don't have any noticeable visual effect, so normally
@@ -677,7 +677,7 @@ class D3D12CommandProcessor final : public CommandProcessor {
   static constexpr DXGI_FORMAT kFxaaSourceTextureFormat =
       DXGI_FORMAT_R16G16B16A16_UNORM;
   // Kept in NON_PIXEL_SHADER_RESOURCE state.
-  Microsoft::WRL::ComPtr<ID3D12Resource> fxaa_source_texture_;
+  std::shared_ptr<ID3D12Resource> fxaa_source_texture_;
   uint64_t fxaa_source_texture_submission_ = 0;
 
   // Unsubmitted barrier batch.

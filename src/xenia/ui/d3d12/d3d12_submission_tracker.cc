@@ -40,8 +40,8 @@ bool D3D12SubmissionTracker::Initialize(ID3D12Device* device,
 
 void D3D12SubmissionTracker::Shutdown() {
   AwaitAllSubmissionsCompletion();
-  queue_.Reset();
-  fence_.Reset();
+  queue_.reset();
+  fence_.reset();
   if (fence_completion_event_) {
     CloseHandle(fence_completion_event_);
     fence_completion_event_ = nullptr;
@@ -82,8 +82,8 @@ bool D3D12SubmissionTracker::AwaitSubmissionCompletion(
   return fence_value == submission_index;
 }
 
-void D3D12SubmissionTracker::SetQueue(ID3D12CommandQueue* new_queue) {
-  if (queue_.Get() == new_queue) {
+void D3D12SubmissionTracker::SetQueue(std::shared_ptr<ID3D12CommandQueue> new_queue) {
+  if (queue_.get() == new_queue.get()) {
     return;
   }
   if (queue_) {
@@ -109,9 +109,15 @@ bool D3D12SubmissionTracker::TrySignalEnqueueing() {
   if (!queue_ || !fence_) {
     return false;
   }
+#ifdef XE_PLATFORM_WIN32
   if (FAILED(queue_->Signal(fence_.Get(), submission_current_ - 1))) {
     return false;
   }
+#else
+  if (FAILED(queue_->Signal(fence_.get(), submission_current_ - 1))) {
+    return false;
+  }
+#endif
   submission_signal_queued_ = submission_current_ - 1;
   return true;
 }

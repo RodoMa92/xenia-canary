@@ -103,6 +103,8 @@ project("xenia-app")
       "xcb",
       "X11-xcb",
       "SDL2",
+      "xenia-gpu-d3d12",
+      "xenia-ui-d3d12",
     })
 
   filter("platforms:Windows")

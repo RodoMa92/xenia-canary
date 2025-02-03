@@ -19,6 +19,12 @@ project("xenia-ui-d3d12")
   files({
     "../shaders/bytecode/d3d12_5_1/*.h",
   })
+  filter({"Platforms:Linux"})
+    includedirs({
+      project_root.."/lib/vkd3d-proton/include/vkd3d-proton",
+      project_root.."/lib/dxvk/include/",
+    })
+  filter({})
 
 group("demos")
 project("xenia-ui-window-d3d12-demo")

@@ -950,9 +950,10 @@ bool D3D12TextureCache::EnsureScaledResolveMemoryCommitted(
     heap_desc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
     heap_desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS |
                       provider.GetHeapFlagCreateNotZeroed();
-    Microsoft::WRL::ComPtr<ID3D12Heap> scaled_resolve_heap;
+    std::shared_ptr<ID3D12Heap> scaled_resolve_heap;
+    ID3D12Heap* ptr = scaled_resolve_heap.get();
     if (FAILED(device->CreateHeap(&heap_desc,
-                                  IID_PPV_ARGS(&scaled_resolve_heap)))) {
+                                  IID_PPV_ARGS(&ptr)))) {
       XELOGE("D3D12TextureCache: Failed to create a scaled resolve tile heap");
       return false;
     }
@@ -1335,15 +1336,16 @@ std::unique_ptr<TextureCache::Texture> D3D12TextureCache::CreateTexture(
   ID3D12Device* device = provider.GetDevice();
   // Assuming untiling will be the next operation.
   D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_COPY_DEST;
-  Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+  std::shared_ptr<ID3D12Resource> resource;
+  ID3D12Resource* ptr = resource.get();
   if (FAILED(device->CreateCommittedResource(
           &ui::d3d12::util::kHeapPropertiesDefault,
           provider.GetHeapFlagCreateNotZeroed(), &desc, resource_state, nullptr,
-          IID_PPV_ARGS(&resource)))) {
+          IID_PPV_ARGS(&ptr)))) {
     return nullptr;
   }
   return std::unique_ptr<Texture>(
-      new D3D12Texture(*this, key, resource.Get(), resource_state));
+      new D3D12Texture(*this, key, resource.get(), resource_state));
 }
 
 bool D3D12TextureCache::LoadTextureDataFromResidentMemoryImpl(Texture& texture,
@@ -1902,15 +1904,16 @@ uint32_t D3D12TextureCache::FindOrCreateTextureDescriptor(
         cache_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         cache_heap_desc.NodeMask = 0;
         while (srv_descriptor_cache_.size() < cache_pages_needed) {
-          Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> cache_heap;
+          std::shared_ptr<ID3D12DescriptorHeap> cache_heap;
+          ID3D12DescriptorHeap* ptr = cache_heap.get();
           if (FAILED(device->CreateDescriptorHeap(&cache_heap_desc,
-                                                  IID_PPV_ARGS(&cache_heap)))) {
+                                                  IID_PPV_ARGS(&ptr)))) {
             XELOGE(
                 "D3D12TextureCache: Failed to create a texture descriptor - "
                 "couldn't create a descriptor cache heap");
             return UINT32_MAX;
           }
-          srv_descriptor_cache_.emplace_back(cache_heap.Get());
+          srv_descriptor_cache_.emplace_back(cache_heap.get());
         }
       }
       descriptor_index = srv_descriptor_cache_allocated_++;

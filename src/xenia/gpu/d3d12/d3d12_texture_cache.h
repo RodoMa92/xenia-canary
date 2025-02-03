@@ -577,7 +577,7 @@ class D3D12TextureCache final : public TextureCache {
                           D3D12_RESOURCE_STATES resource_state);
     ~D3D12Texture();
 
-    ID3D12Resource* resource() const { return resource_.Get(); }
+    ID3D12Resource* resource() const { return resource_.get(); }
 
     D3D12_RESOURCE_STATES SetResourceState(D3D12_RESOURCE_STATES new_state) {
       D3D12_RESOURCE_STATES old_state = resource_state_;
@@ -596,7 +596,7 @@ class D3D12TextureCache final : public TextureCache {
     }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+    std::shared_ptr<ID3D12Resource> resource_;
     D3D12_RESOURCE_STATES resource_state_;
 
     // For bindful - indices in the non-shader-visible descriptor cache for
@@ -627,11 +627,11 @@ class D3D12TextureCache final : public TextureCache {
       return *this;
     }
 
-    ID3D12DescriptorHeap* heap() const { return heap_.Get(); }
+    ID3D12DescriptorHeap* heap() const { return heap_.get(); }
     D3D12_CPU_DESCRIPTOR_HANDLE heap_start() const { return heap_start_; }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> heap_;
+    std::shared_ptr<ID3D12DescriptorHeap> heap_;
     D3D12_CPU_DESCRIPTOR_HANDLE heap_start_;
   };
 
@@ -654,7 +654,7 @@ class D3D12TextureCache final : public TextureCache {
     explicit ScaledResolveVirtualBuffer(ID3D12Resource* resource,
                                         D3D12_RESOURCE_STATES resource_state)
         : resource_(resource), resource_state_(resource_state) {}
-    ID3D12Resource* resource() const { return resource_.Get(); }
+    ID3D12Resource* resource() const { return resource_.get(); }
     D3D12_RESOURCE_STATES SetResourceState(D3D12_RESOURCE_STATES new_state) {
       D3D12_RESOURCE_STATES old_state = resource_state_;
       if (old_state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
@@ -673,7 +673,7 @@ class D3D12TextureCache final : public TextureCache {
     void ClearUAVBarrierPending() { uav_barrier_pending_ = false; }
 
    private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+    std::shared_ptr<ID3D12Resource> resource_;
     D3D12_RESOURCE_STATES resource_state_;
     bool uav_barrier_pending_ = false;
   };
@@ -794,11 +794,11 @@ class D3D12TextureCache final : public TextureCache {
   D3D12CommandProcessor& command_processor_;
   bool bindless_resources_used_;
 
-  Microsoft::WRL::ComPtr<ID3D12RootSignature> load_root_signature_;
-  std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, kLoadShaderCount>
+  std::shared_ptr<ID3D12RootSignature> load_root_signature_;
+  std::array<std::shared_ptr<ID3D12PipelineState>, kLoadShaderCount>
       load_pipelines_;
   // Load pipelines for resolution-scaled resolve targets.
-  std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, kLoadShaderCount>
+  std::array<std::shared_ptr<ID3D12PipelineState>, kLoadShaderCount>
       load_pipelines_scaled_;
 
   std::vector<SRVDescriptorCachePage> srv_descriptor_cache_;
@@ -815,7 +815,7 @@ class D3D12TextureCache final : public TextureCache {
   };
   // Contains null SRV descriptors of dimensions from NullSRVDescriptorIndex.
   // For copying, not shader-visible.
-  Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> null_srv_descriptor_heap_;
+  std::shared_ptr<ID3D12DescriptorHeap> null_srv_descriptor_heap_;
   D3D12_CPU_DESCRIPTOR_HANDLE null_srv_descriptor_heap_start_;
 
   std::array<D3D12TextureBinding, xenos::kTextureFetchConstantCount>
@@ -871,7 +871,7 @@ class D3D12TextureCache final : public TextureCache {
       "Scaled resolve heaps are assumed to only be wholly mappable to up to "
       "two 2 GB buffers");
   // Resident portions of the tiled buffer.
-  std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> scaled_resolve_heaps_;
+  std::vector<std::shared_ptr<ID3D12Heap>> scaled_resolve_heaps_;
   // Number of currently resident portions of the tiled buffer, for profiling.
   uint32_t scaled_resolve_heap_count_ = 0;
   // Current scaled resolve state.

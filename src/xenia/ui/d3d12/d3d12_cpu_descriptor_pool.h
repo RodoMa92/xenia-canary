@@ -73,7 +73,7 @@ class D3D12CpuDescriptorPool
     size_t index_ = 0;
   };
 
-  D3D12CpuDescriptorPool(const ui::d3d12::D3D12Provider& provider,
+  D3D12CpuDescriptorPool(const D3D12Provider& provider,
                          D3D12_DESCRIPTOR_HEAP_TYPE type,
                          uint32_t heap_size_log2)
       : provider_(provider), type_(type), heap_size_log2_(heap_size_log2) {
@@ -104,7 +104,7 @@ class D3D12CpuDescriptorPool
     return provider_.OffsetDescriptor(type_, heap_start, heap_local_index);
   }
 
-  const ui::d3d12::D3D12Provider& provider_;
+  const D3D12Provider& provider_;
   D3D12_DESCRIPTOR_HEAP_TYPE type_;
   uint32_t heap_size_log2_;
   std::vector<ID3D12DescriptorHeap*> heaps_;

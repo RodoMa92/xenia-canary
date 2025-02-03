@@ -1969,11 +1969,12 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(
   }
   // Create zeroed for more determinism, primarily with respect to compression
   // and depth float24 / float32 mirroring.
-  Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+  std::shared_ptr<ID3D12Resource> resource;
+  ID3D12Resource* ptr = resource.get();
   if (FAILED(device->CreateCommittedResource(
           &ui::d3d12::util::kHeapPropertiesDefault, D3D12_HEAP_FLAG_NONE,
           &resource_desc, resource_state, &optimized_clear_value,
-          IID_PPV_ARGS(&resource)))) {
+          IID_PPV_ARGS(&ptr)))) {
     return nullptr;
   }
   {
@@ -2032,9 +2033,9 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(
       stencil_srv_desc.Texture2D.PlaneSlice = 1;
       stencil_srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
     }
-    device->CreateDepthStencilView(resource.Get(), &dsv_desc,
+    device->CreateDepthStencilView(resource.get(), &dsv_desc,
                                    descriptor_draw_handle);
-    device->CreateShaderResourceView(resource.Get(), &stencil_srv_desc,
+    device->CreateShaderResourceView(resource.get(), &stencil_srv_desc,
                                      descriptor_srv_stencil.GetHandle());
     // Depth SRV.
     srv_desc.Format = GetDepthSRVDepthDXGIFormat(key.GetDepthFormat());
@@ -2049,7 +2050,7 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(
       rtv_desc.Texture2D.MipSlice = 0;
       rtv_desc.Texture2D.PlaneSlice = 0;
     }
-    device->CreateRenderTargetView(resource.Get(), &rtv_desc,
+    device->CreateRenderTargetView(resource.get(), &rtv_desc,
                                    descriptor_draw_handle);
     // sRGB drawing RTV.
     switch (key.GetColorFormat()) {
@@ -2061,7 +2062,7 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(
             return nullptr;
           }
           rtv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-          device->CreateRenderTargetView(resource.Get(), &rtv_desc,
+          device->CreateRenderTargetView(resource.get(), &rtv_desc,
                                          descriptor_draw_srgb.GetHandle());
         }
         break;
@@ -2077,17 +2078,17 @@ RenderTargetCache::RenderTarget* D3D12RenderTargetCache::CreateRenderTarget(
         return nullptr;
       }
       rtv_desc.Format = load_format;
-      device->CreateRenderTargetView(resource.Get(), &rtv_desc,
+      device->CreateRenderTargetView(resource.get(), &rtv_desc,
                                      descriptor_load_separate.GetHandle());
     }
     // SRV for ownership transfer and dumping.
     srv_desc.Format = load_format;
   }
-  device->CreateShaderResourceView(resource.Get(), &srv_desc,
+  device->CreateShaderResourceView(resource.get(), &srv_desc,
                                    descriptor_srv.GetHandle());
 
   return new D3D12RenderTarget(
-      key, resource.Get(), std::move(descriptor_draw),
+      key, resource.get(), std::move(descriptor_draw),
       std::move(descriptor_draw_srgb), std::move(descriptor_load_separate),
       std::move(descriptor_srv), std::move(descriptor_srv_stencil),
       resource_state);

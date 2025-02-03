@@ -127,9 +127,12 @@ uint64_t D3D12DescriptorHeapPool::Request(uint64_t submission_index,
     new_heap_desc.NumDescriptors = page_size_;
     new_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     new_heap_desc.NodeMask = 0;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> new_heap;
+    std::shared_ptr<ID3D12DescriptorHeap> new_heap;
+    //FixMe(RodoMa92): Getting the pointer before passing it to IID_PPV_ARGS is
+    // the only way to make the compiler happy with inferring auto**
+    ID3D12DescriptorHeap * ptr = new_heap.get();
     if (FAILED(device_->CreateDescriptorHeap(&new_heap_desc,
-                                             IID_PPV_ARGS(&new_heap)))) {
+                                             IID_PPV_ARGS(&ptr)))) {
       XELOGE("Failed to create a heap for {} shader-visible descriptors",
              page_size_);
       return kHeapIndexInvalid;

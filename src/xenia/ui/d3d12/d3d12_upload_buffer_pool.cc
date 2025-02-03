@@ -80,7 +80,7 @@ D3D12UploadBufferPool::CreatePageImplementation() {
   D3D12_RESOURCE_DESC buffer_desc;
   util::FillBufferResourceDesc(buffer_desc, page_size_,
                                D3D12_RESOURCE_FLAG_NONE);
-  Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+  std::shared_ptr<ID3D12Resource> buffer;
 
   if (!provider_.CreateUploadResource(
           provider_.GetHeapFlagCreateNotZeroed(), &buffer_desc,
@@ -98,7 +98,7 @@ D3D12UploadBufferPool::CreatePageImplementation() {
     return nullptr;
   }
   // Unmapping will be done implicitly when the resource is destroyed.
-  return new D3D12Page(buffer.Get(), mapping);
+  return new D3D12Page(buffer.get(), mapping);
 }
 
 D3D12UploadBufferPool::D3D12Page::D3D12Page(ID3D12Resource* buffer,
