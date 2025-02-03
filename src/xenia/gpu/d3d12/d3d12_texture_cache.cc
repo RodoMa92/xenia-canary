@@ -332,7 +332,7 @@ bool D3D12TextureCache::Initialize() {
         ui::d3d12::util::CreateComputePipeline(
             device, current_load_shader_code.pShaderBytecode,
             current_load_shader_code.BytecodeLength,
-            load_root_signature_.Get());
+            load_root_signature_.get());
     if (!load_pipelines_[i]) {
       XELOGE(
           "D3D12TextureCache: Failed to create the texture loading pipeline "
@@ -348,7 +348,7 @@ bool D3D12TextureCache::Initialize() {
             ui::d3d12::util::CreateComputePipeline(
                 device, current_load_shader_code_scaled.pShaderBytecode,
                 current_load_shader_code_scaled.BytecodeLength,
-                load_root_signature_.Get());
+                load_root_signature_.get());
         if (!load_pipelines_scaled_[i]) {
           XELOGE(
               "D3D12TextureCache: Failed to create the resolution-scaled "
@@ -371,9 +371,10 @@ bool D3D12TextureCache::Initialize() {
       uint32_t(NullSRVDescriptorIndex::kCount);
   null_srv_descriptor_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
   null_srv_descriptor_heap_desc.NodeMask = 0;
+  ID3D12DescriptorHeap* ptr = null_srv_descriptor_heap_.get();
   if (FAILED(device->CreateDescriptorHeap(
           &null_srv_descriptor_heap_desc,
-          IID_PPV_ARGS(&null_srv_descriptor_heap_)))) {
+          IID_PPV_ARGS(&ptr)))) {
     XELOGE(
         "D3D12TextureCache: Failed to create the descriptor heap for null "
         "SRVs");
@@ -988,7 +989,7 @@ bool D3D12TextureCache::EnsureScaledResolveMemoryCommitted(
                D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES);
       direct_queue->UpdateTileMappings(
           scaled_resolve_2gb_buffers_[buffer_index]->resource(), 1,
-          &region_start_coordinates, &region_size, scaled_resolve_heap.Get(), 1,
+          &region_start_coordinates, &region_size, scaled_resolve_heap.get(), 1,
           &range_flags, &heap_range_start_offset, &range_tile_count,
           D3D12_TILE_MAPPING_FLAG_NONE);
     }
@@ -1365,8 +1366,8 @@ bool D3D12TextureCache::LoadTextureDataFromResidentMemoryImpl(Texture& texture,
   }
   bool texture_resolution_scaled = texture_key.scaled_resolve;
   ID3D12PipelineState* pipeline =
-      texture_resolution_scaled ? load_pipelines_scaled_[load_shader].Get()
-                                : load_pipelines_[load_shader].Get();
+      texture_resolution_scaled ? load_pipelines_scaled_[load_shader].get()
+                                : load_pipelines_[load_shader].get();
   if (pipeline == nullptr) {
     return false;
   }
@@ -1524,7 +1525,7 @@ bool D3D12TextureCache::LoadTextureDataFromResidentMemoryImpl(Texture& texture,
   }
   uint32_t descriptor_write_index = 0;
   command_processor_.SetExternalPipeline(pipeline);
-  command_list.D3DSetComputeRootSignature(load_root_signature_.Get());
+  command_list.D3DSetComputeRootSignature(load_root_signature_.get());
   // Set up the destination descriptor.
   assert_true(descriptor_write_index < descriptor_count);
   ui::d3d12::util::DescriptorCpuGpuHandlePair descriptor_dest =

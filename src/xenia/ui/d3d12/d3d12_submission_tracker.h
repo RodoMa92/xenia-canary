@@ -12,6 +12,7 @@
 
 #include <memory>
 
+#include "pevents/src/pevents.h"
 #include "xenia/ui/d3d12/d3d12_api.h"
 
 namespace xe {
@@ -83,7 +84,11 @@ class D3D12SubmissionTracker {
  private:
   UINT64 submission_current_ = 1;
   UINT64 submission_signal_queued_ = 0;
+#ifndef XE_PLATFORM_WIN32
+  neosmart::neosmart_event_t fence_completion_event_ = nullptr;
+#else
   HANDLE fence_completion_event_ = nullptr;
+#endif
   std::shared_ptr<ID3D12Fence> fence_;
   std::shared_ptr<ID3D12CommandQueue> queue_;
 };

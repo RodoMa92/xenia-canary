@@ -287,6 +287,8 @@ workspace("xenia")
     -- not supported; lifecycle management (especially surface loss) is also
     -- complicated.
     include("third_party/SDL2.lua")
+    include("third_party/pevents.lua")
+    files("src/xenia/helper/linux_util.h")
   end
 
   -- Disable treating warnings as fatal errors for all third party projects, as
@@ -325,6 +327,8 @@ workspace("xenia")
     include("src/xenia/apu/sdl")
     include("src/xenia/helper/sdl")
     include("src/xenia/hid/sdl")
+    include("src/xenia/gpu/d3d12")
+    include("src/xenia/ui/d3d12")
   end
 
   if os.istarget("windows") then

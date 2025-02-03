@@ -502,8 +502,11 @@ class D3D12CommandProcessor final : public CommandProcessor {
 
   bool cache_clear_requested_ = false;
 
+#ifndef XE_PLATFORM_WIN32
+  neosmart::neosmart_event_t fence_completion_event_ = nullptr;
+#else
   HANDLE fence_completion_event_ = nullptr;
-
+#endif
   bool submission_open_ = false;
   // Values of submission_fence_.
   uint64_t submission_current_ = 1;

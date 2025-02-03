@@ -1203,20 +1203,22 @@ bool D3D12CommandProcessor::SetupContext() {
       gamma_ramp_buffer_desc, (256 + 128 * 3) * 4, D3D12_RESOURCE_FLAG_NONE);
   // The first action will be uploading.
   gamma_ramp_buffer_state_ = D3D12_RESOURCE_STATE_COPY_DEST;
+  ID3D12Resource * ptr = gamma_ramp_buffer_.get();
   if (FAILED(device->CreateCommittedResource(
           &ui::d3d12::util::kHeapPropertiesDefault, heap_flag_create_not_zeroed,
           &gamma_ramp_buffer_desc, gamma_ramp_buffer_state_, nullptr,
-          IID_PPV_ARGS(&gamma_ramp_buffer_)))) {
+          IID_PPV_ARGS(&ptr)))) {
     XELOGE("Failed to create the gamma ramp buffer");
     return false;
   }
   // The upload buffer is frame-buffered.
   gamma_ramp_buffer_desc.Width *= kQueueFrames;
 
+  ptr = gamma_ramp_upload_buffer_.get();
   if (!GetD3D12Provider().CreateUploadResource(
           heap_flag_create_not_zeroed, &gamma_ramp_buffer_desc,
           D3D12_RESOURCE_STATE_GENERIC_READ,
-          IID_PPV_ARGS(&gamma_ramp_upload_buffer_))) {
+          IID_PPV_ARGS(&ptr))) {
     XELOGE("Failed to create the gamma ramp upload buffer");
     return false;
   }
@@ -1319,7 +1321,7 @@ bool D3D12CommandProcessor::SetupContext() {
       ui::d3d12::util::CreateComputePipeline(
           device, shaders::apply_gamma_table_cs,
           sizeof(shaders::apply_gamma_table_cs),
-          apply_gamma_root_signature_.Get());
+          apply_gamma_root_signature_.get());
   if (!apply_gamma_table_pipeline_) {
     XELOGE(
         "Failed to create the 256-entry table gamma ramp application compute "
@@ -1330,7 +1332,7 @@ bool D3D12CommandProcessor::SetupContext() {
       ui::d3d12::util::CreateComputePipeline(
           device, shaders::apply_gamma_table_fxaa_luma_cs,
           sizeof(shaders::apply_gamma_table_fxaa_luma_cs),
-          apply_gamma_root_signature_.Get());
+          apply_gamma_root_signature_.get());
   if (!apply_gamma_table_fxaa_luma_pipeline_) {
     XELOGE(
         "Failed to create the 256-entry table gamma ramp application compute "
@@ -1341,7 +1343,7 @@ bool D3D12CommandProcessor::SetupContext() {
       ui::d3d12::util::CreateComputePipeline(
           device, shaders::apply_gamma_pwl_cs,
           sizeof(shaders::apply_gamma_pwl_cs),
-          apply_gamma_root_signature_.Get());
+          apply_gamma_root_signature_.get());
   if (!apply_gamma_pwl_pipeline_) {
     XELOGE("Failed to create the PWL gamma ramp application compute pipeline");
     return false;
@@ -1350,7 +1352,7 @@ bool D3D12CommandProcessor::SetupContext() {
       ui::d3d12::util::CreateComputePipeline(
           device, shaders::apply_gamma_pwl_fxaa_luma_cs,
           sizeof(shaders::apply_gamma_pwl_fxaa_luma_cs),
-          apply_gamma_root_signature_.Get());
+          apply_gamma_root_signature_.get());
   if (!apply_gamma_pwl_fxaa_luma_pipeline_) {
     XELOGE(
         "Failed to create the PWL gamma ramp application compute pipeline with "
@@ -1433,7 +1435,7 @@ bool D3D12CommandProcessor::SetupContext() {
   *(fxaa_pipeline_.ReleaseAndGetAddressOf()) =
       ui::d3d12::util::CreateComputePipeline(device, shaders::fxaa_cs,
                                              sizeof(shaders::fxaa_cs),
-                                             fxaa_root_signature_.Get());
+                                             fxaa_root_signature_.get());
   if (!fxaa_pipeline_) {
     XELOGE("Failed to create the FXAA compute pipeline");
     return false;
@@ -1441,7 +1443,7 @@ bool D3D12CommandProcessor::SetupContext() {
   *(fxaa_extreme_pipeline_.ReleaseAndGetAddressOf()) =
       ui::d3d12::util::CreateComputePipeline(device, shaders::fxaa_extreme_cs,
                                              sizeof(shaders::fxaa_extreme_cs),
-                                             fxaa_root_signature_.Get());
+                                             fxaa_root_signature_.get());
   if (!fxaa_pipeline_) {
     XELOGE("Failed to create the extreme-quality FXAA compute pipeline");
     return false;
@@ -1632,22 +1634,22 @@ void D3D12CommandProcessor::ShutdownContext() {
   resources_for_deletion_.clear();
 
   fxaa_source_texture_submission_ = 0;
-  fxaa_source_texture_.Reset();
+  fxaa_source_texture_.reset();
 
-  fxaa_extreme_pipeline_.Reset();
-  fxaa_pipeline_.Reset();
-  fxaa_root_signature_.Reset();
+  fxaa_extreme_pipeline_.reset();
+  fxaa_pipeline_.reset();
+  fxaa_root_signature_.reset();
 
-  apply_gamma_pwl_fxaa_luma_pipeline_.Reset();
-  apply_gamma_pwl_pipeline_.Reset();
-  apply_gamma_table_fxaa_luma_pipeline_.Reset();
-  apply_gamma_table_pipeline_.Reset();
-  apply_gamma_root_signature_.Reset();
+  apply_gamma_pwl_fxaa_luma_pipeline_.reset();
+  apply_gamma_pwl_pipeline_.reset();
+  apply_gamma_table_fxaa_luma_pipeline_.reset();
+  apply_gamma_table_pipeline_.reset();
+  apply_gamma_root_signature_.reset();
 
   // Unmapping will be done implicitly by the destruction.
   gamma_ramp_upload_buffer_mapping_ = nullptr;
-  gamma_ramp_upload_buffer_.Reset();
-  gamma_ramp_buffer_.Reset();
+  gamma_ramp_upload_buffer_.reset();
+  gamma_ramp_buffer_.reset();
 
   texture_cache_.reset();
 
@@ -2212,9 +2214,9 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
                 fxaa_source_texture_->AddRef();
                 resources_for_deletion_.emplace_back(
                     fxaa_source_texture_submission_,
-                    fxaa_source_texture_.Get());
+                    fxaa_source_texture_.get());
               }
-              fxaa_source_texture_.Reset();
+              fxaa_source_texture_.reset();
               fxaa_source_texture_submission_ = 0;
             }
           }
@@ -2233,12 +2235,13 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
             fxaa_source_texture_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             fxaa_source_texture_desc.Flags =
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            ID3D12Resource* ptr = fxaa_source_texture_.get();
             if (FAILED(device->CreateCommittedResource(
                     &ui::d3d12::util::kHeapPropertiesDefault,
                     provider.GetHeapFlagCreateNotZeroed(),
                     &fxaa_source_texture_desc,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, nullptr,
-                    IID_PPV_ARGS(&fxaa_source_texture_)))) {
+                    IID_PPV_ARGS(&ptr)))) {
               XELOGE("Failed to create the FXAA input texture");
               swap_post_effect = SwapPostEffect::kNone;
               use_fxaa = false;
@@ -2299,14 +2302,14 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
                     : static_cast<const void*>(gamma_ramp_256_entry_table()),
                 gamma_ramp_size_bytes);
           }
-          PushTransitionBarrier(gamma_ramp_buffer_.Get(),
+          PushTransitionBarrier(gamma_ramp_buffer_.get(),
                                 gamma_ramp_buffer_state_,
                                 D3D12_RESOURCE_STATE_COPY_DEST);
           gamma_ramp_buffer_state_ = D3D12_RESOURCE_STATE_COPY_DEST;
           SubmitBarriers();
           deferred_command_list_.D3DCopyBufferRegion(
-              gamma_ramp_buffer_.Get(), gamma_ramp_offset_bytes,
-              gamma_ramp_upload_buffer_.Get(), gamma_ramp_upload_offset_bytes,
+              gamma_ramp_buffer_.get(), gamma_ramp_offset_bytes,
+              gamma_ramp_upload_buffer_.get(), gamma_ramp_upload_offset_bytes,
               gamma_ramp_size_bytes);
           (use_pwl_gamma_ramp ? gamma_ramp_pwl_up_to_date_
                               : gamma_ramp_256_entry_table_up_to_date_) = true;
@@ -2343,7 +2346,7 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
         }
 
         ID3D12Resource* apply_gamma_dest =
-            use_fxaa ? fxaa_source_texture_.Get() : guest_output_resource;
+            use_fxaa ? fxaa_source_texture_.get() : guest_output_resource;
         D3D12_RESOURCE_STATES apply_gamma_dest_initial_state =
             use_fxaa ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
                      : ui::d3d12::D3D12Presenter::kGuestOutputInternalState;
@@ -2369,14 +2372,14 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
                                          &swap_texture_srv_desc,
                                          apply_gamma_descriptors[1].first);
 
-        PushTransitionBarrier(gamma_ramp_buffer_.Get(),
+        PushTransitionBarrier(gamma_ramp_buffer_.get(),
                               gamma_ramp_buffer_state_,
                               D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         gamma_ramp_buffer_state_ =
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
         deferred_command_list_.D3DSetComputeRootSignature(
-            apply_gamma_root_signature_.Get());
+            apply_gamma_root_signature_.get());
         ApplyGammaConstants apply_gamma_constants;
         apply_gamma_constants.size[0] = uint32_t(swap_texture_desc.Width);
         apply_gamma_constants.size[1] = uint32_t(swap_texture_desc.Height);
@@ -2396,12 +2399,12 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
         ID3D12PipelineState* apply_gamma_pipeline;
         if (use_pwl_gamma_ramp) {
           apply_gamma_pipeline = use_fxaa
-                                     ? apply_gamma_pwl_fxaa_luma_pipeline_.Get()
-                                     : apply_gamma_pwl_pipeline_.Get();
+                                     ? apply_gamma_pwl_fxaa_luma_pipeline_.get()
+                                     : apply_gamma_pwl_pipeline_.get();
         } else {
           apply_gamma_pipeline =
-              use_fxaa ? apply_gamma_table_fxaa_luma_pipeline_.Get()
-                       : apply_gamma_table_pipeline_.Get();
+              use_fxaa ? apply_gamma_table_fxaa_luma_pipeline_.get()
+                       : apply_gamma_table_pipeline_.get();
         }
         SetExternalPipeline(apply_gamma_pipeline);
         SubmitBarriers();
@@ -2447,7 +2450,7 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
             // From now on, even in case of failure, guest_output_resource must
             // be transitioned back to kGuestOutputInternalState!
             deferred_command_list_.D3DSetComputeRootSignature(
-                fxaa_root_signature_.Get());
+                fxaa_root_signature_.get());
             FxaaConstants fxaa_constants;
             fxaa_constants.size[0] = uint32_t(swap_texture_desc.Width);
             fxaa_constants.size[1] = uint32_t(swap_texture_desc.Height);
@@ -2477,14 +2480,14 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
             fxaa_source_srv_desc.Texture2D.MipLevels = 1;
             fxaa_source_srv_desc.Texture2D.PlaneSlice = 0;
             fxaa_source_srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
-            device->CreateShaderResourceView(fxaa_source_texture_.Get(),
+            device->CreateShaderResourceView(fxaa_source_texture_.get(),
                                              &fxaa_source_srv_desc,
                                              fxaa_descriptors[1].first);
             deferred_command_list_.D3DSetComputeRootDescriptorTable(
                 UINT(FxaaRootParameter::kSource), fxaa_descriptors[1].second);
             SetExternalPipeline(swap_post_effect == SwapPostEffect::kFxaaExtreme
-                                    ? fxaa_extreme_pipeline_.Get()
-                                    : fxaa_pipeline_.Get());
+                                    ? fxaa_extreme_pipeline_.get()
+                                    : fxaa_pipeline_.get());
             SubmitBarriers();
             deferred_command_list_.D3DDispatch(group_count_x, group_count_y, 1);
             PushTransitionBarrier(
@@ -3337,6 +3340,8 @@ bool D3D12CommandProcessor::BeginSubmission(bool is_guest_command) {
 
     pix_capturing_ =
         pix_capture_requested_.exchange(false, std::memory_order_relaxed);
+
+#ifdef XE_PLATFORM_WIN32
     if (pix_capturing_) {
       IDXGraphicsAnalysis* graphics_analysis =
           GetD3D12Provider().GetGraphicsAnalysis();
@@ -3344,6 +3349,7 @@ bool D3D12CommandProcessor::BeginSubmission(bool is_guest_command) {
         graphics_analysis->BeginCapture();
       }
     }
+#endif
 
     primitive_processor_->BeginFrame();
 
@@ -3434,6 +3440,7 @@ bool D3D12CommandProcessor::EndSubmission(bool is_swap) {
     if (cvars::clear_memory_page_state) {
       shared_memory_->SetSystemPageBlocksValidWithGpuDataWritten();
     }
+#ifdef XE_PLATFORM_WIN32
     // Close the capture after submitting.
     if (pix_capturing_) {
       IDXGraphicsAnalysis* graphics_analysis = provider.GetGraphicsAnalysis();
@@ -3442,6 +3449,7 @@ bool D3D12CommandProcessor::EndSubmission(bool is_swap) {
       }
       pix_capturing_ = false;
     }
+#endif
     frame_open_ = false;
     // Submission already closed now, so minus 1.
     closed_frame_submissions_[(frame_current_++) % kQueueFrames] =
@@ -5123,7 +5131,7 @@ void D3D12CommandProcessor::WriteGammaRampSRV(
     desc.Buffer.FirstElement = 0;
     desc.Buffer.NumElements = 256;
   }
-  device->CreateShaderResourceView(gamma_ramp_buffer_.Get(), &desc, handle);
+  device->CreateShaderResourceView(gamma_ramp_buffer_.get(), &desc, handle);
 }
 
 #define COMMAND_PROCESSOR D3D12CommandProcessor

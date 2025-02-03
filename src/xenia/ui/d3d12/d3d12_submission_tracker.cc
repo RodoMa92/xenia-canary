@@ -11,6 +11,9 @@
 
 #include "xenia/base/assert.h"
 #include "xenia/base/logging.h"
+#ifdef XE_PLATFORM_LINUX
+#include "../../helper/linux_util.h"
+#endif
 
 namespace xe {
 namespace ui {
@@ -27,13 +30,14 @@ bool D3D12SubmissionTracker::Initialize(ID3D12Device* device,
     return false;
   }
   // Continue where the tracker was left at the last shutdown.
+  ID3D12Fence* ptr = fence_.get();
   if (FAILED(device->CreateFence(submission_current_ - 1, D3D12_FENCE_FLAG_NONE,
-                                 IID_PPV_ARGS(&fence_)))) {
+                                 IID_PPV_ARGS(&ptr)))) {
     XELOGE("D3D12SubmissionTracker: Failed to create the fence");
     Shutdown();
     return false;
   }
-  queue_ = queue;
+  queue_ = std::shared_ptr<ID3D12CommandQueue> (queue);
   submission_signal_queued_ = submission_current_ - 1;
   return true;
 }

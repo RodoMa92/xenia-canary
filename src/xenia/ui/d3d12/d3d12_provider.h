@@ -14,7 +14,7 @@
 
 //Helpers to make d3d12 Windoisms compile under Linux
 #ifndef XE_PLATFORM_WIN32
-#include "xenia/gpu/d3d12/d3d12_linux_util.h"
+#include "../../helper/linux_util.h"
 #endif
 #include "xenia/ui/d3d12/d3d12_api.h"
 #include "xenia/ui/graphics_provider.h"

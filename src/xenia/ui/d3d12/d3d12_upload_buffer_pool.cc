@@ -38,7 +38,7 @@ uint8_t* D3D12UploadBufferPool::Request(
     return nullptr;
   }
   if (buffer_out) {
-    *buffer_out = page->buffer_.Get();
+    *buffer_out = page->buffer_.get();
   }
   if (offset_out) {
     *offset_out = offset;
@@ -61,7 +61,7 @@ uint8_t* D3D12UploadBufferPool::RequestPartial(
     return nullptr;
   }
   if (buffer_out) {
-    *buffer_out = page->buffer_.Get();
+    *buffer_out = page->buffer_.get();
   }
   if (offset_out) {
     *offset_out = offset;
@@ -81,10 +81,11 @@ D3D12UploadBufferPool::CreatePageImplementation() {
   util::FillBufferResourceDesc(buffer_desc, page_size_,
                                D3D12_RESOURCE_FLAG_NONE);
   std::shared_ptr<ID3D12Resource> buffer;
+  ID3D12Resource* buffer_ptr = buffer.get();
 
   if (!provider_.CreateUploadResource(
           provider_.GetHeapFlagCreateNotZeroed(), &buffer_desc,
-          D3D12_RESOURCE_STATE_GENERIC_READ, IID_PPV_ARGS(&buffer))) {
+          D3D12_RESOURCE_STATE_GENERIC_READ, IID_PPV_ARGS(&buffer_ptr))) {
     XELOGE("Failed to create a D3D upload buffer with {} bytes", page_size_);
     return nullptr;
   }

@@ -94,28 +94,31 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
   util::FillBufferResourceDesc(buffer_desc, copy_dest_size,
                                D3D12_RESOURCE_FLAG_NONE);
   std::shared_ptr<ID3D12Resource> buffer;
+  ID3D12Resource* buffer_ptr = buffer.get();
   // Create zeroed not to leak data in the row padding.
   if (FAILED(device->CreateCommittedResource(
           &util::kHeapPropertiesReadback, D3D12_HEAP_FLAG_NONE, &buffer_desc,
-          D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&buffer)))) {
+          D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&buffer_ptr)))) {
     XELOGE("D3D12Presenter: Failed to create the guest output capture buffer");
     return false;
   }
 
   {
     std::shared_ptr<ID3D12CommandAllocator> command_allocator;
+    ID3D12CommandAllocator* command_allocator_ptr = command_allocator.get();
     if (FAILED(
             device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                           IID_PPV_ARGS(&command_allocator)))) {
+                                           IID_PPV_ARGS(&command_allocator_ptr)))) {
       XELOGE(
           "D3D12Presenter: Failed to create the guest output capturing command "
           "allocator");
       return false;
     }
     std::shared_ptr<ID3D12GraphicsCommandList> command_list;
+    ID3D12GraphicsCommandList* command_list_ptr = command_list.get();
     if (FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
                                          command_allocator.get(), nullptr,
-                                         IID_PPV_ARGS(&command_list)))) {
+                                         IID_PPV_ARGS(&command_list_ptr)))) {
       XELOGE(
           "D3D12Presenter: Failed to create the guest output capturing command "
           "list");
@@ -163,7 +166,7 @@ bool D3D12Presenter::CaptureGuestOutput(RawImage& image_out) {
     if (!submission_tracker.Initialize(device, direct_queue)) {
       return false;
     }
-    ID3D12CommandList* execute_command_list = command_list.Get();
+    ID3D12CommandList* execute_command_list = command_list.get();
     direct_queue->ExecuteCommandLists(1, &execute_command_list);
     if (!submission_tracker.NextSubmission()) {
       XELOGE(
@@ -243,8 +246,9 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
                 : 0));
     if (swap_chain_resized) {
       for (uint32_t i = 0; i < PaintContext::kSwapChainBufferCount; ++i) {
+        ID3D12Resource* ptr = paint_context_.swap_chain_buffers[i].get();
         if (FAILED(paint_context_.swap_chain->GetBuffer(
-                i, IID_PPV_ARGS(&paint_context_.swap_chain_buffers[i])))) {
+                i, IID_PPV_ARGS(&ptr)))) {
           swap_chain_resized = false;
           break;
         }
@@ -320,8 +324,9 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
             "Xenia surface type");
         return SurfacePaintConnectResult::kFailureSurfaceUnusable;
     }
+    IDXGISwapChain3* swap_chain_3_ptr = paint_context_.swap_chain.get();
     if (FAILED(swap_chain_1->QueryInterface(
-            IID_PPV_ARGS(&paint_context_.swap_chain)))) {
+            IID_PPV_ARGS(&swap_chain_3_ptr)))) {
       XELOGE(
           "D3D12Presenter: Failed to get version 3 of the swap chain "
           "interface");
@@ -334,8 +339,9 @@ D3D12Presenter::ConnectOrReconnectPaintingToSurfaceFromUIThread(
     paint_context_.swap_chain_allows_tearing =
         (swap_chain_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0;
     for (uint32_t i = 0; i < PaintContext::kSwapChainBufferCount; ++i) {
+      ID3D12Resource* swap_chain_buffer_ptr = paint_context_.swap_chain_buffers[i].get();
       if (FAILED(paint_context_.swap_chain->GetBuffer(
-              i, IID_PPV_ARGS(&paint_context_.swap_chain_buffers[i])))) {
+              i, IID_PPV_ARGS(&swap_chain_buffer_ptr)))) {
         XELOGE(
             "D3D12Presenter: Failed to get buffer {} of a {}-buffer swap chain",
             i, PaintContext::kSwapChainBufferCount);
@@ -409,11 +415,12 @@ bool D3D12Presenter::RefreshGuestOutputImpl(
     guest_output_resource_new_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     guest_output_resource_new_desc.Flags =
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    ID3D12Resource* d3d12_res_ptr = guest_output_resource_ref.second.get();
     if (FAILED(device->CreateCommittedResource(
             &util::kHeapPropertiesDefault,
             provider_.GetHeapFlagCreateNotZeroed(),
             &guest_output_resource_new_desc, kGuestOutputInternalState, nullptr,
-            IID_PPV_ARGS(&guest_output_resource_ref.second)))) {
+            IID_PPV_ARGS(&d3d12_res_ptr)))) {
       XELOGE("D3D12Presenter: Failed to create the guest output {}x{} texture",
              frontbuffer_width, frontbuffer_height);
       return false;
@@ -645,11 +652,12 @@ Presenter::PaintResult D3D12Presenter::PaintAndPresentImpl(
             intermediate_desc.SampleDesc.Quality = 0;
             intermediate_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             intermediate_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            ID3D12Resource* intermediate_texture_ptr = intermediate_texture_ptr_ref.get();
             if (FAILED(device->CreateCommittedResource(
                     &util::kHeapPropertiesDefault,
                     provider_.GetHeapFlagCreateNotZeroed(), &intermediate_desc,
                     D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr,
-                    IID_PPV_ARGS(&intermediate_texture_ptr_ref)))) {
+                    IID_PPV_ARGS(&intermediate_texture_ptr)))) {
               XELOGE(
                   "D3D12Presenter: Failed to create a guest output "
                   "presentation intermediate texture");
@@ -1090,8 +1098,9 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   // Check if DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING is supported.
   {
     std::shared_ptr<IDXGIFactory5> dxgi_factory_5;
+    IDXGIFactory5* dxgi_factory_ptr = dxgi_factory_5.get();
     if (SUCCEEDED(provider_.GetDXGIFactory()->QueryInterface(
-            IID_PPV_ARGS(&dxgi_factory_5)))) {
+            IID_PPV_ARGS(&dxgi_factory_ptr)))) {
       BOOL tearing_feature_data;
       dxgi_supports_tearing_ =
           SUCCEEDED(dxgi_factory_5->CheckFeatureSupport(
@@ -1359,9 +1368,10 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
     if (CanGuestOutputPaintEffectBeIntermediate(guest_output_paint_effect)) {
       guest_output_paint_pipeline_desc.RTVFormats[0] =
           kGuestOutputIntermediateFormat;
+      ID3D12PipelineState* int_pipeline_state_ptr = guest_output_paint_intermediate_pipelines_[i].get();
       if (FAILED(device->CreateGraphicsPipelineState(
               &guest_output_paint_pipeline_desc,
-              IID_PPV_ARGS(&guest_output_paint_intermediate_pipelines_[i])))) {
+              IID_PPV_ARGS(&int_pipeline_state_ptr)))) {
         XELOGE(
             "D3D12Presenter: Failed to create the guest output painting "
             "pipeline for effect {} writing to an intermediate texture",
@@ -1371,9 +1381,10 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
     }
     if (CanGuestOutputPaintEffectBeFinal(guest_output_paint_effect)) {
       guest_output_paint_pipeline_desc.RTVFormats[0] = kSwapChainFormat;
+      ID3D12PipelineState* out_pipeline_state_ptr = guest_output_paint_final_pipelines_[i].get();
       if (FAILED(device->CreateGraphicsPipelineState(
               &guest_output_paint_pipeline_desc,
-              IID_PPV_ARGS(&guest_output_paint_final_pipelines_[i])))) {
+              IID_PPV_ARGS(&out_pipeline_state_ptr)))) {
         XELOGE(
             "D3D12Presenter: Failed to create the guest output painting "
             "pipeline for effect {} writing to a swap chain buffer",
@@ -1398,19 +1409,21 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   // Paint command allocators and command list.
   for (std::shared_ptr<ID3D12CommandAllocator>&
            paint_command_allocator_ref : paint_context_.command_allocators) {
+    ID3D12CommandAllocator * paint_command_allocator = paint_command_allocator_ref.get();
     if (FAILED(device->CreateCommandAllocator(
             D3D12_COMMAND_LIST_TYPE_DIRECT,
-            IID_PPV_ARGS(&paint_command_allocator_ref)))) {
+            IID_PPV_ARGS(&paint_command_allocator)))) {
       XELOGE(
           "D3D12Presenter: Failed to create a command allocator for drawing to "
           "a swap chain");
       return false;
     }
   }
+  ID3D12GraphicsCommandList* command_list = paint_context_.command_list.get();
   if (FAILED(device->CreateCommandList(
           0, D3D12_COMMAND_LIST_TYPE_DIRECT,
           paint_context_.command_allocators[0].get(), nullptr,
-          IID_PPV_ARGS(&paint_context_.command_list)))) {
+          IID_PPV_ARGS(&command_list)))) {
     XELOGE(
         "D3D12Presenter: Failed to create the command list for drawing to a "
         "swap chain");
@@ -1425,8 +1438,9 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   rtv_heap_desc.NumDescriptors = PaintContext::kRTVCount;
   rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
   rtv_heap_desc.NodeMask = 0;
+  ID3D12DescriptorHeap* rtv_heap = paint_context_.rtv_heap.get();
   if (FAILED(device->CreateDescriptorHeap(
-          &rtv_heap_desc, IID_PPV_ARGS(&paint_context_.rtv_heap)))) {
+          &rtv_heap_desc, IID_PPV_ARGS(&rtv_heap)))) {
     XELOGE(
         "D3D12Presenter: Failed to create an RTV descriptor heap with {} "
         "descriptors",
@@ -1440,8 +1454,9 @@ bool D3D12Presenter::InitializeSurfaceIndependent() {
   view_heap_desc.NumDescriptors = PaintContext::kViewCount;
   view_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
   view_heap_desc.NodeMask = 0;
+  ID3D12DescriptorHeap* view_heap = paint_context_.view_heap.get();
   if (FAILED(device->CreateDescriptorHeap(
-          &view_heap_desc, IID_PPV_ARGS(&paint_context_.view_heap)))) {
+          &view_heap_desc, IID_PPV_ARGS(&view_heap)))) {
     XELOGE(
         "D3D12Presenter: Failed to create a shader-visible CBV/SRV/UAV "
         "descriptor heap with {} descriptors",

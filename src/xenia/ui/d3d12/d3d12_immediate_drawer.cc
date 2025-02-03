@@ -165,14 +165,16 @@ bool D3D12ImmediateDrawer::Initialize() {
   pipeline_desc.NumRenderTargets = 1;
   pipeline_desc.RTVFormats[0] = D3D12Presenter::kSwapChainFormat;
   pipeline_desc.SampleDesc.Count = 1;
+  ID3D12PipelineState* pipe_state = pipeline_triangle_.get();
   if (FAILED(device->CreateGraphicsPipelineState(
-          &pipeline_desc, IID_PPV_ARGS(&pipeline_triangle_)))) {
+          &pipeline_desc, IID_PPV_ARGS(&pipe_state)))) {
     XELOGE("D3D12ImmediateDrawer: Failed to create the triangle pipeline");
     return false;
   }
   pipeline_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+  pipe_state = pipeline_line_.get();
   if (FAILED(device->CreateGraphicsPipelineState(
-          &pipeline_desc, IID_PPV_ARGS(&pipeline_line_)))) {
+          &pipeline_desc, IID_PPV_ARGS(&pipe_state)))) {
     XELOGE("D3D12ImmediateDrawer: Failed to create the line pipeline");
     return false;
   }
@@ -183,8 +185,9 @@ bool D3D12ImmediateDrawer::Initialize() {
   sampler_heap_desc.NumDescriptors = UINT(SamplerIndex::kCount);
   sampler_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
   sampler_heap_desc.NodeMask = 0;
+  ID3D12DescriptorHeap* samp_heap = sampler_heap_.get();
   if (FAILED(device->CreateDescriptorHeap(&sampler_heap_desc,
-                                          IID_PPV_ARGS(&sampler_heap_)))) {
+                                          IID_PPV_ARGS(&samp_heap)))) {
     XELOGE(
         "D3D12ImmediateDrawer: Failed to create the sampler descriptor heap");
     return false;
@@ -252,10 +255,11 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
   resource_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
   resource_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
   std::shared_ptr<ID3D12Resource> resource;
+  ID3D12Resource* ptr_res = resource.get();
   if (SUCCEEDED(device->CreateCommittedResource(
           &util::kHeapPropertiesDefault, heap_flag_create_not_zeroed,
           &resource_desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-          IID_PPV_ARGS(&resource)))) {
+          IID_PPV_ARGS(&ptr_res)))) {
     // Create and fill the upload buffer.
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT upload_footprint;
     UINT64 upload_size;
@@ -265,10 +269,11 @@ std::unique_ptr<ImmediateTexture> D3D12ImmediateDrawer::CreateTexture(
     util::FillBufferResourceDesc(upload_buffer_desc, upload_size,
                                  D3D12_RESOURCE_FLAG_NONE);
     std::shared_ptr<ID3D12Resource> upload_buffer;
+    ID3D12Resource * upload_buffer_ptr = upload_buffer.get();
     if (SUCCEEDED(device->CreateCommittedResource(
             &util::kHeapPropertiesUpload, heap_flag_create_not_zeroed,
             &upload_buffer_desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&upload_buffer)))) {
+            IID_PPV_ARGS(&upload_buffer_ptr)))) {
       D3D12_RANGE upload_buffer_read_range;
       upload_buffer_read_range.Begin = 0;
       upload_buffer_read_range.End = 0;

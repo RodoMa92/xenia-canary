@@ -42,9 +42,9 @@ bool D3D12PrimitiveProcessor::Initialize() {
 void D3D12PrimitiveProcessor::Shutdown(bool from_destructor) {
   frame_index_buffers_.clear();
   frame_index_buffer_pool_.reset();
-  builtin_index_buffer_upload_.Reset();
+  builtin_index_buffer_upload_.reset();
   builtin_index_buffer_gpu_address_ = 0;
-  builtin_index_buffer_.Reset();
+  builtin_index_buffer_.reset();
   if (!from_destructor) {
     ShutdownCommon();
   }
@@ -54,7 +54,7 @@ void D3D12PrimitiveProcessor::CompletedSubmissionUpdated() {
   if (builtin_index_buffer_upload_ &&
       command_processor_.GetCompletedSubmission() >=
           builtin_index_buffer_upload_submission_) {
-    builtin_index_buffer_upload_.Reset();
+    builtin_index_buffer_upload_.reset();
   }
 }
 
@@ -65,8 +65,8 @@ void D3D12PrimitiveProcessor::BeginSubmission() {
     // been used yet, so it's in the initial state, and
     // builtin_index_buffer_upload_ is in an upload heap, so it's GENERIC_READ.
     command_processor_.GetDeferredCommandList().D3DCopyResource(
-        builtin_index_buffer_.Get(), builtin_index_buffer_upload_.Get());
-    command_processor_.PushTransitionBarrier(builtin_index_buffer_.Get(),
+        builtin_index_buffer_.get(), builtin_index_buffer_upload_.get());
+    command_processor_.PushTransitionBarrier(builtin_index_buffer_.get(),
                                              D3D12_RESOURCE_STATE_COPY_DEST,
                                              D3D12_RESOURCE_STATE_INDEX_BUFFER);
     builtin_index_buffer_upload_submission_ =

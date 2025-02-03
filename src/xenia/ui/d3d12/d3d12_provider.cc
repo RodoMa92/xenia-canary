@@ -75,9 +75,11 @@ std::unique_ptr<D3D12Provider> D3D12Provider::Create() {
 }
 
 D3D12Provider::~D3D12Provider() {
+#ifdef XE_PLATFORM_WIN32
   if (graphics_analysis_ != nullptr) {
     graphics_analysis_->Release();
   }
+#endif
   if (direct_queue_ != nullptr) {
     direct_queue_->Release();
   }
@@ -90,8 +92,9 @@ D3D12Provider::~D3D12Provider() {
 
   if (cvars::d3d12_debug && pfn_dxgi_get_debug_interface1_) {
     std::shared_ptr<IDXGIDebug> dxgi_debug;
+    IDXGIDebug* dxgi_debug_ptr = dxgi_debug.get();
     if (SUCCEEDED(
-            pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&dxgi_debug)))) {
+            pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&dxgi_debug_ptr)))) {
       dxgi_debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
     }
   }
@@ -489,11 +492,13 @@ bool D3D12Provider::Initialize() {
       uint32_t(resource_binding_tier_), uint32_t(tiled_resources_tier_),
       unaligned_block_textures_supported_ ? "yes" : "no");
 
-  // Get the graphics analysis interface, will silently fail if PIX is not
-  // attached.
-  pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&graphics_analysis_));
-  //TODO(RodoMa92): NVApi stuff is not implemented on other platforms besides Win
 #ifdef XE_PLATFORM_WIN32
+  // Get the graphics analysis interface, will silently fail if PIX is not
+  // attached. TODO(RodoMa92): Not implemented on non Windows platforms.
+  pfn_dxgi_get_debug_interface1_(0, IID_PPV_ARGS(&graphics_analysis_));
+#endif
+#ifdef XE_PLATFORM_WIN32
+  //TODO(RodoMa92): NVApi stuff is not implemented on other platforms besides Win
   if (GetAdapterVendorID() == GpuVendorID::kNvidia) {
     nvapi_ = new lightweight_nvapi::nvapi_state_t();
     if (!nvapi_->is_available()) {
@@ -530,7 +535,8 @@ uint32_t D3D12Provider::CreateUploadResource(
     void** ppvResource, bool try_create_cpuvisible,
     const D3D12_CLEAR_VALUE* pOptimizedClearValue) const {
   auto device = GetDevice();
-
+  //FIXME(RodoMa92): No nvapi stuff supported on non Windows platforms
+#ifdef XE_PLATFORM_WIN32
   if (try_create_cpuvisible && nvapi_createcommittedresource_) {
     lightweight_nvapi::NV_RESOURCE_PARAMS nvrp;
     nvrp.NVResourceFlags =
@@ -548,6 +554,7 @@ uint32_t D3D12Provider::CreateUploadResource(
       return UPLOAD_RESULT_CREATE_CPUVISIBLE;
     }
   }
+#endif
   if (FAILED(device->CreateCommittedResource(
           &ui::d3d12::util::kHeapPropertiesUpload, HeapFlags, pDesc,
           InitialResourceState, pOptimizedClearValue, riidResource,
